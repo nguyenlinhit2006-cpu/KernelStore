@@ -33,14 +33,6 @@ fn Header() -> impl IntoView {
                     Some(u) => {
                         let nav = navigate.clone();
                         view! {
-                            <a href="/orders" class="term-btn px-2 py-0.5 text-xs">"orders"</a>
-                            <a href="/cart" class="term-btn px-2 py-0.5 text-xs">"cart"</a>
-                            <a href="/chat" class="term-btn px-2 py-0.5 text-xs">"chat"</a>
-                            {if u.role == "Admin" {
-                                view! { <a href="/admin" class="term-btn px-2 py-0.5 text-xs">"admin"</a> }.into_any()
-                            } else {
-                                view! { <span></span> }.into_any()
-                            }}
                             <span class="hidden sm:inline text-[var(--fg-muted)]">{format!("{} ({}):", u.user_name, u.role)}</span>
                             <button
                                 class="term-btn px-2 py-0.5 text-xs"
@@ -52,7 +44,12 @@ fn Header() -> impl IntoView {
                         }.into_any()
                     }
                     None => view! {
-                        <span class="text-[var(--fg-muted)]">"guest@kernelstore"</span>
+                        <div class="flex items-center gap-2 sm:gap-3">
+                            <span class="hidden sm:inline text-[var(--fg-muted)]">"guest@kernelstore"</span>
+                            <a href="/products" class="term-btn px-2 py-0.5 text-xs">"browse"</a>
+                            <a href="/auth/login" class="term-btn px-2 py-0.5 text-xs">"login"</a>
+                            <a href="/auth/register" class="term-btn px-2 py-0.5 text-xs">"register"</a>
+                        </div>
                     }.into_any(),
                 }}
             </div>
@@ -69,6 +66,7 @@ pub fn App() -> impl IntoView {
         <Router>
             <div class="min-h-screen flex flex-col">
                 <Header/>
+                <crate::components::nav::NavMenu/>
                 <crate::components::toast::ToastHost/>
                 <main class="flex-1">
                     <Routes fallback=|| view! {

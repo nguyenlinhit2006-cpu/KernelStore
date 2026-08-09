@@ -1,5 +1,6 @@
 use leptos::prelude::*;
 use leptos::task::spawn_local;
+use leptos_router::hooks::use_query_map;
 use std::rc::Rc;
 
 use crate::api::{
@@ -71,6 +72,16 @@ pub fn SellerPage() -> impl IntoView {
             shop.set(Some(s));
             section.set("dashboard".to_string());
             created.set(None);
+        }
+    });
+
+    // Deep-link a section from the top menu, e.g. /seller?tab=products.
+    let query = use_query_map();
+    Effect::new(move |_| {
+        if let Some(tab) = query.get().get("tab") {
+            if ["dashboard", "sales", "products", "settings"].contains(&tab.as_str()) {
+                section.set(tab);
+            }
         }
     });
 

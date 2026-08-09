@@ -15,3 +15,7 @@ frontend/dist/
 .vs/
 .idea/
 *.user
+
+# Kate editor swap files
+*.kate-swp
+.*.kate-swp
