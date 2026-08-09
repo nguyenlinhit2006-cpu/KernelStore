@@ -42,8 +42,10 @@ public class SellerDashboardController : ControllerBase
         // Các dòng đơn hàng chứa sản phẩm của shop
         var shopDetails = _db.OrderDetails.Where(d => d.Product!.ShopId == shopId);
 
-        // Doanh thu chỉ tính đơn không bị hủy
-        var paidDetails = shopDetails.Where(d => d.Order!.Status != OrderStatus.Cancelled);
+        // Doanh thu chỉ tính đơn không bị hủy / không bị trả hàng
+        var paidDetails = shopDetails.Where(d =>
+            d.Order!.Status != OrderStatus.Cancelled &&
+            d.Order.Status != OrderStatus.Returned);
 
         var totalRevenue = await paidDetails.SumAsync(d => (decimal?)d.TotalPrice) ?? 0m;
         var itemsSold = await paidDetails.SumAsync(d => (int?)d.Quantity) ?? 0;

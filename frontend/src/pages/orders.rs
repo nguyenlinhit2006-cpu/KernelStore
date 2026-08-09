@@ -3,7 +3,8 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_params_map;
 
 use crate::api::{
-    confirm_received, create_review, get_order, list_orders, update_order_status, ApiError, Order,
+    cancel_order, confirm_received, create_review, get_order, list_orders, request_return,
+    resolve_return, update_order_status, ApiError, Order,
 };
 use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
@@ -20,8 +21,8 @@ const ORDER_STATUSES: &[&str] = &[
 fn status_class(status: &str) -> &'static str {
     match status {
         "Delivered" => "term-info",
-        "Cancelled" => "term-error",
-        "Shipped" | "Processing" | "Confirmed" => "term-warn",
+        "Cancelled" | "Returned" => "term-error",
+        "Shipped" | "Processing" | "Confirmed" | "ReturnRequested" => "term-warn",
         _ => "term-muted", // Pending
     }
 }
@@ -174,17 +175,35 @@ pub fn OrderDetailPage() -> impl IntoView {
                 };
 
                 let role = auth.user.get().map(|u| u.role).unwrap_or_default();
-                // Seller/Admin can manage the order status.
-                let can_manage = role == "Seller" || role == "Admin";
+                // Server decides who can manage this order (seller who owns items, or admin) —
+                // a seller viewing their own *purchase* won't get the manage box.
+                let can_manage = o.can_manage;
+                let is_customer = role == "Customer";
                 // Customers can review products once they've confirmed receipt (Delivered).
-                let can_review = role == "Customer" && o.status == "Delivered";
+                let can_review = is_customer && o.status == "Delivered";
                 // Buyer confirms receipt once the order has shipped.
-                let can_confirm = role == "Customer" && o.status == "Shipped";
+                let can_confirm = is_customer && o.status == "Shipped";
+                // Buyer can cancel before it ships.
+                let can_cancel = is_customer
+                    && matches!(o.status.as_str(), "Pending" | "Confirmed" | "Processing");
+                // Buyer can request a return after receiving.
+                let can_return = is_customer && o.status == "Delivered";
+                // Seller/admin resolves a pending return request.
+                let can_resolve_return = can_manage && o.status == "ReturnRequested";
 
                 view! {
                     <OrderDetailView order=o can_review=can_review/>
                     <Show when=move || can_confirm>
                         <ConfirmReceipt order_signal=order/>
+                    </Show>
+                    <Show when=move || can_cancel>
+                        <CancelOrder order_signal=order/>
+                    </Show>
+                    <Show when=move || can_return>
+                        <ReturnRequest order_signal=order/>
+                    </Show>
+                    <Show when=move || can_resolve_return>
+                        <ReturnResolver order_signal=order/>
                     </Show>
                     <Show when=move || can_manage>
                         <StatusManager order_signal=order/>
@@ -240,6 +259,141 @@ fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     }
 }
 
+/// Buyer cancels their order before it ships (restores stock server-side).
+#[component]
+fn CancelOrder(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let busy = RwSignal::new(false);
+
+    let cancel = move |_| {
+        if busy.get() {
+            return;
+        }
+        let Some(o) = order_signal.get() else { return };
+        busy.set(true);
+        let token = auth.token.get().unwrap_or_default();
+        let id = o.id.clone();
+        spawn_local(async move {
+            match cancel_order(&token, &id).await {
+                Ok(updated) => {
+                    toasts.info("đã hủy đơn hàng");
+                    order_signal.set(Some(updated));
+                }
+                Err(e) => toasts.error(e.to_string()),
+            }
+            busy.set(false);
+        });
+    };
+
+    view! {
+        <div class="term-box p-4 mt-4">
+            <p class="term-muted text-xs mb-2"># hủy đơn</p>
+            <p class="text-sm mb-3">"Đổi ý? Bạn có thể hủy khi đơn chưa được giao — hàng sẽ được hoàn về kho."</p>
+            <button
+                class="term-btn px-4 py-1.5 text-sm term-error"
+                disabled=move || busy.get()
+                on:click=cancel
+            >
+                {move || if busy.get() { "đang hủy..." } else { "$ hủy đơn hàng" }}
+            </button>
+        </div>
+    }
+}
+
+/// Buyer requests a return after receiving the order.
+#[component]
+fn ReturnRequest(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let busy = RwSignal::new(false);
+
+    let request = move |_| {
+        if busy.get() {
+            return;
+        }
+        let Some(o) = order_signal.get() else { return };
+        busy.set(true);
+        let token = auth.token.get().unwrap_or_default();
+        let id = o.id.clone();
+        spawn_local(async move {
+            match request_return(&token, &id).await {
+                Ok(updated) => {
+                    toasts.info("đã gửi yêu cầu trả hàng");
+                    order_signal.set(Some(updated));
+                }
+                Err(e) => toasts.error(e.to_string()),
+            }
+            busy.set(false);
+        });
+    };
+
+    view! {
+        <div class="term-box p-4 mt-4">
+            <p class="term-muted text-xs mb-2"># trả hàng</p>
+            <p class="text-sm mb-3">"Sản phẩm có vấn đề? Gửi yêu cầu trả hàng để người bán xem xét."</p>
+            <button
+                class="term-btn px-4 py-1.5 text-sm"
+                disabled=move || busy.get()
+                on:click=request
+            >
+                {move || if busy.get() { "đang gửi..." } else { "$ yêu cầu trả hàng" }}
+            </button>
+        </div>
+    }
+}
+
+/// Seller/admin approves or rejects a pending return request.
+#[component]
+fn ReturnResolver(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let busy = RwSignal::new(false);
+
+    let resolve = move |approve: bool| {
+        if busy.get() {
+            return;
+        }
+        let Some(o) = order_signal.get() else { return };
+        busy.set(true);
+        let token = auth.token.get().unwrap_or_default();
+        let id = o.id.clone();
+        spawn_local(async move {
+            match resolve_return(&token, &id, approve).await {
+                Ok(updated) => {
+                    toasts.info(if approve { "đã duyệt trả hàng" } else { "đã từ chối trả hàng" });
+                    order_signal.set(Some(updated));
+                }
+                Err(e) => toasts.error(e.to_string()),
+            }
+            busy.set(false);
+        });
+    };
+
+    view! {
+        <div class="term-box p-4 mt-4">
+            <p class="term-muted text-xs mb-2"># yêu cầu trả hàng (seller/admin)</p>
+            <p class="text-sm mb-3">"Khách đã yêu cầu trả hàng. Duyệt sẽ hoàn hàng về kho."</p>
+            <div class="flex items-center gap-2 flex-wrap">
+                <button
+                    class="term-btn px-4 py-1.5 text-sm"
+                    disabled=move || busy.get()
+                    on:click=move |_| resolve(true)
+                >
+                    {move || if busy.get() { "..." } else { "$ duyệt trả hàng" }}
+                </button>
+                <button
+                    class="term-btn px-4 py-1.5 text-sm term-error"
+                    disabled=move || busy.get()
+                    on:click=move |_| resolve(false)
+                >
+                    "$ từ chối"
+                </button>
+            </div>
+        </div>
+    }
+}
+
 #[component]
 fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
@@ -254,7 +408,8 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let terminal = move || {
         order_signal
             .get()
-            .map(|o| o.status == "Delivered" || o.status == "Cancelled")
+            .map(|o| matches!(o.status.as_str(),
+                "Delivered" | "Cancelled" | "ReturnRequested" | "Returned"))
             .unwrap_or(false)
     };
 

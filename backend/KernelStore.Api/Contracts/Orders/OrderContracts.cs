@@ -67,4 +67,6 @@ public record OrderDto(
     DateTime? PaidAt,
     OrderAddressDto Address,
     List<OrderItemDto> Items,
-    int ItemCount);
+    int ItemCount,
+    // True nếu người xem được phép quản lý trạng thái đơn (seller sở hữu hàng trong đơn, hoặc admin).
+    bool CanManage);

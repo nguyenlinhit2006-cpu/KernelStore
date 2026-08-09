@@ -312,15 +312,16 @@ fn RevenueDashboard() -> impl IntoView {
 
 /// Status options for the sales filter; "" means all statuses.
 const SALES_STATUSES: &[&str] = &[
-    "", "Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled",
+    "", "Pending", "Confirmed", "Processing", "Shipped", "Delivered",
+    "ReturnRequested", "Returned", "Cancelled",
 ];
 
 /// Terminal color class for an order status.
 fn sales_status_class(status: &str) -> &'static str {
     match status {
         "Delivered" => "term-info",
-        "Cancelled" => "term-error",
-        "Shipped" | "Processing" | "Confirmed" => "term-warn",
+        "Cancelled" | "Returned" => "term-error",
+        "Shipped" | "Processing" | "Confirmed" | "ReturnRequested" => "term-warn",
         _ => "term-muted", // Pending
     }
 }

@@ -86,6 +86,84 @@ public class AdminShopsController : ControllerBase
         return Ok(ApiResponse<ShopDto>.Ok(ToDto(shop), "Đã từ chối shop"));
     }
 
+    // Ban tạm thời shop vi phạm: Approved/Rejected/Pending → Banned, ẩn (deactivate) sản phẩm.
+    [HttpPost("{id:guid}/ban")]
+    public async Task<IActionResult> Ban(Guid id)
+    {
+        var shop = await _db.Shops.Include(s => s.Owner).FirstOrDefaultAsync(s => s.Id == id);
+        if (shop == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy shop"));
+
+        if (shop.Status == ShopStatus.Deleted)
+            return BadRequest(ApiResponse.Fail("Shop đã bị xóa vĩnh viễn"));
+        if (shop.Status == ShopStatus.Banned)
+            return BadRequest(ApiResponse.Fail("Shop đang bị ban"));
+
+        shop.Status = ShopStatus.Banned;
+        await SetProductsActiveAsync(id, false);
+        await _db.SaveChangesAsync();
+
+        return Ok(ApiResponse<ShopDto>.Ok(ToDto(shop),
+            "Đã tạm ban shop vi phạm. Sản phẩm đã bị ẩn khỏi cửa hàng."));
+    }
+
+    // Gỡ ban tạm thời: Banned → Approved, hiện lại sản phẩm.
+    [HttpPost("{id:guid}/unban")]
+    public async Task<IActionResult> Unban(Guid id)
+    {
+        var shop = await _db.Shops.Include(s => s.Owner).FirstOrDefaultAsync(s => s.Id == id);
+        if (shop == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy shop"));
+
+        if (shop.Status != ShopStatus.Banned)
+            return BadRequest(ApiResponse.Fail("Chỉ gỡ ban được shop đang bị ban"));
+
+        shop.Status = ShopStatus.Approved;
+        await SetProductsActiveAsync(id, true);
+        await _db.SaveChangesAsync();
+
+        return Ok(ApiResponse<ShopDto>.Ok(ToDto(shop),
+            "Đã gỡ ban shop. Sản phẩm đã hiển thị trở lại."));
+    }
+
+    // Ban vĩnh viễn (xóa shop). Nếu chưa phát sinh đơn hàng → xóa cứng shop + sản phẩm.
+    // Nếu đã có lịch sử đơn → xóa mềm (status Deleted) + ẩn sản phẩm, giữ nguyên lịch sử đơn.
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var shop = await _db.Shops.Include(s => s.Owner).FirstOrDefaultAsync(s => s.Id == id);
+        if (shop == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy shop"));
+
+        if (shop.Status == ShopStatus.Deleted)
+            return BadRequest(ApiResponse.Fail("Shop đã bị xóa vĩnh viễn"));
+
+        var hasOrders = await _db.OrderDetails.AnyAsync(d => d.Product!.ShopId == id);
+
+        if (!hasOrders)
+        {
+            // Xóa cứng: sản phẩm (cascade ảnh/review/cart) rồi tới shop.
+            var products = await _db.Products.Where(p => p.ShopId == id).ToListAsync();
+            _db.Products.RemoveRange(products);
+            _db.Shops.Remove(shop);
+            await _db.SaveChangesAsync();
+            return Ok(ApiResponse.Ok(null, "Đã xóa vĩnh viễn shop và toàn bộ sản phẩm."));
+        }
+
+        // Có lịch sử đơn → xóa mềm để không phá vỡ đơn hàng cũ.
+        shop.Status = ShopStatus.Deleted;
+        await SetProductsActiveAsync(id, false);
+        await _db.SaveChangesAsync();
+        return Ok(ApiResponse<ShopDto>.Ok(ToDto(shop),
+            "Đã ban vĩnh viễn (xóa) shop. Sản phẩm bị gỡ; lịch sử đơn hàng được giữ lại."));
+    }
+
+    // Bật/tắt hiển thị toàn bộ sản phẩm của shop.
+    private Task SetProductsActiveAsync(Guid shopId, bool active) =>
+        _db.Products
+            .Where(p => p.ShopId == shopId)
+            .ExecuteUpdateAsync(s => s.SetProperty(p => p.IsActive, active));
+
     private static ShopDto ToDto(Shop shop) => new(
         shop.Id, shop.Name, shop.Slug, shop.Description, shop.LogoUrl,
         shop.Status.ToString(), shop.CreatedAt, shop.OwnerId,

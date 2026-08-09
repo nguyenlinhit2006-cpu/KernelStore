@@ -2,9 +2,9 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api::{
-    admin_approve_shop, admin_reject_shop, create_category, delete_category, get_admin_dashboard,
-    list_categories, list_shops, update_category, CategoryNode, CategoryPayload, DashboardStats,
-    ShopInfo,
+    admin_approve_shop, admin_ban_shop, admin_delete_shop, admin_reject_shop, admin_unban_shop,
+    create_category, delete_category, get_admin_dashboard, list_categories, list_shops,
+    update_category, CategoryNode, CategoryPayload, DashboardStats, ShopInfo,
 };
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
@@ -228,7 +228,7 @@ fn ShopModeration() -> impl IntoView {
         <h2 class="text-base font-bold mb-3">"# shop moderation"</h2>
 
         <div class="flex gap-2 mb-4 text-sm">
-            {["All", "Pending", "Approved", "Rejected"].into_iter().map(|label| {
+            {["All", "Pending", "Approved", "Rejected", "Banned", "Deleted"].into_iter().map(|label| {
                 let label = label.to_string();
                 let label_active = label.clone();
                 let label_click = label.clone();
@@ -288,12 +288,11 @@ fn AdminShopRow(
     let shop_name = shop.name.clone();
 
     let status = shop.status.clone();
-    let status_display = status.clone();
     let status_badge = status.clone();
     let badge = match status_badge.as_str() {
         "Approved" => "term-info",
         "Pending" => "term-warn",
-        "Rejected" | "Banned" => "term-error",
+        "Rejected" | "Banned" | "Deleted" => "term-error",
         _ => "term-muted",
     };
 
@@ -337,6 +336,82 @@ fn AdminShopRow(
         });
     };
 
+    let ban_id = shop_id.clone();
+    let ban_name = shop_name.clone();
+    let ban = move |_| {
+        let token = auth.token.get().unwrap_or_default();
+        let id = ban_id.clone();
+        let name = ban_name.clone();
+        acting.set(true);
+        row_error.set(String::new());
+        spawn_local(async move {
+            match admin_ban_shop(&token, &id).await {
+                Ok(_) => {
+                    flash.set(format!("đã tạm ban '{name}' — sản phẩm bị ẩn"));
+                    refresh.set(());
+                }
+                Err(e) => row_error.set(e.to_string()),
+            }
+            acting.set(false);
+        });
+    };
+
+    let unban_id = shop_id.clone();
+    let unban_name = shop_name.clone();
+    let unban = move |_| {
+        let token = auth.token.get().unwrap_or_default();
+        let id = unban_id.clone();
+        let name = unban_name.clone();
+        acting.set(true);
+        row_error.set(String::new());
+        spawn_local(async move {
+            match admin_unban_shop(&token, &id).await {
+                Ok(_) => {
+                    flash.set(format!("đã gỡ ban '{name}'"));
+                    refresh.set(());
+                }
+                Err(e) => row_error.set(e.to_string()),
+            }
+            acting.set(false);
+        });
+    };
+
+    let del_id = shop_id.clone();
+    let del_name = shop_name.clone();
+    let del = move |_| {
+        // Native confirm — hành động phá hủy, không thể hoàn tác.
+        let confirmed = web_sys::window()
+            .and_then(|w| w
+                .confirm_with_message(&format!(
+                    "Ban vĩnh viễn (xóa) shop '{del_name}'? Không thể hoàn tác."))
+                .ok())
+            .unwrap_or(false);
+        if !confirmed {
+            return;
+        }
+        let token = auth.token.get().unwrap_or_default();
+        let id = del_id.clone();
+        acting.set(true);
+        row_error.set(String::new());
+        spawn_local(async move {
+            match admin_delete_shop(&token, &id).await {
+                Ok(msg) => {
+                    flash.set(msg);
+                    refresh.set(());
+                }
+                Err(e) => row_error.set(e.to_string()),
+            }
+            acting.set(false);
+        });
+    };
+
+    // Nút hành động theo trạng thái.
+    let s = status.clone();
+    let is_pending = s == "Pending";
+    let is_banned = s == "Banned";
+    let is_deleted = s == "Deleted";
+    let can_ban = matches!(s.as_str(), "Approved" | "Rejected");
+
     view! {
         <div class="term-box p-4 flex justify-between items-start gap-4">
             <div class="min-w-0">
@@ -348,14 +423,25 @@ fn AdminShopRow(
                     {move || row_error.get()}
                 </p>
             </div>
-            <div
-                class="flex gap-2 shrink-0"
-                style:display=move || if status_display == "Pending" { "flex" } else { "none" }
-            >
-                <button class="term-btn px-3 py-1 text-xs" prop:disabled=move || acting.get()
-                    on:click=approve>"approve"</button>
-                <button class="term-btn px-3 py-1 text-xs" prop:disabled=move || acting.get()
-                    on:click=reject>"reject"</button>
+            <div class="flex gap-2 shrink-0 flex-wrap justify-end">
+                <Show when=move || is_pending>
+                    <button class="term-btn px-3 py-1 text-xs" prop:disabled=move || acting.get()
+                        on:click=approve.clone()>"approve"</button>
+                    <button class="term-btn px-3 py-1 text-xs" prop:disabled=move || acting.get()
+                        on:click=reject.clone()>"reject"</button>
+                </Show>
+                <Show when=move || can_ban>
+                    <button class="term-btn px-3 py-1 text-xs term-warn" prop:disabled=move || acting.get()
+                        on:click=ban.clone()>"ban tạm thời"</button>
+                </Show>
+                <Show when=move || is_banned>
+                    <button class="term-btn px-3 py-1 text-xs" prop:disabled=move || acting.get()
+                        on:click=unban.clone()>"gỡ ban"</button>
+                </Show>
+                <Show when=move || !is_deleted>
+                    <button class="term-btn px-3 py-1 text-xs term-error" prop:disabled=move || acting.get()
+                        on:click=del.clone()>"xóa (ban vĩnh viễn)"</button>
+                </Show>
             </div>
         </div>
     }

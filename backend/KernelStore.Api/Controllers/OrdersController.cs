@@ -149,7 +149,11 @@ public class OrdersController : ControllerBase
 
         // Đơn do chính user đặt → xem đầy đủ; đơn bán của shop → chỉ phần hàng của shop.
         var dtos = orders
-            .Select(o => BuildDtoFromLoaded(o, o.UserId == userId ? null : shopId))
+            .Select(o =>
+            {
+                var sf = o.UserId == userId ? null : shopId;
+                return BuildDtoFromLoaded(o, sf, isAdmin || sf.HasValue);
+            })
             .ToList();
         return Ok(ApiResponse<List<OrderDto>>.Ok(dtos, "OK"));
     }
@@ -181,7 +185,8 @@ public class OrdersController : ControllerBase
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
 
-        var dtos = orders.Select(o => BuildDtoFromLoaded(o, sid)).ToList();
+        // Đây là đơn bán của shop → seller được quản lý trạng thái.
+        var dtos = orders.Select(o => BuildDtoFromLoaded(o, sid, true)).ToList();
         return Ok(ApiResponse<List<OrderDto>>.Ok(dtos, "OK"));
     }
 
@@ -209,8 +214,103 @@ public class OrdersController : ControllerBase
         order.PaidAt ??= DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
-        var dto = BuildDtoFromLoaded(order, null);
+        // Hành động của người mua → không có quyền quản lý trạng thái.
+        var dto = BuildDtoFromLoaded(order, null, false);
         return Ok(ApiResponse<OrderDto>.Ok(dto, "Đã xác nhận nhận hàng"));
+    }
+
+    // Khách hủy đơn của mình khi chưa giao (Pending/Confirmed/Processing) → hoàn kho.
+    [HttpPost("{id:guid}/cancel")]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse.Fail("Không xác định được người dùng"));
+
+        var order = await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy đơn hàng"));
+
+        if (order.UserId != userId)
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse.Fail("Bạn không có quyền hủy đơn hàng này"));
+
+        if (order.Status is not (OrderStatus.Pending or OrderStatus.Confirmed or OrderStatus.Processing))
+            return BadRequest(ApiResponse.Fail(
+                "Chỉ hủy được đơn khi chưa giao (Pending/Confirmed/Processing)"));
+
+        order.Status = OrderStatus.Cancelled;
+        RestoreStock(order);
+        await _db.SaveChangesAsync();
+
+        var dto = BuildDtoFromLoaded(order, null, false);
+        return Ok(ApiResponse<OrderDto>.Ok(dto, "Đã hủy đơn hàng"));
+    }
+
+    // Khách yêu cầu trả hàng sau khi đã nhận (Delivered → ReturnRequested).
+    [HttpPost("{id:guid}/return")]
+    public async Task<IActionResult> RequestReturn(Guid id)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse.Fail("Không xác định được người dùng"));
+
+        var order = await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy đơn hàng"));
+
+        if (order.UserId != userId)
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse.Fail("Bạn không có quyền trả đơn hàng này"));
+
+        if (order.Status != OrderStatus.Delivered)
+            return BadRequest(ApiResponse.Fail("Chỉ yêu cầu trả hàng khi đơn đã nhận (Delivered)"));
+
+        order.Status = OrderStatus.ReturnRequested;
+        await _db.SaveChangesAsync();
+
+        var dto = BuildDtoFromLoaded(order, null, false);
+        return Ok(ApiResponse<OrderDto>.Ok(dto, "Đã gửi yêu cầu trả hàng"));
+    }
+
+    // Seller/Admin duyệt hoặc từ chối yêu cầu trả hàng.
+    // approve=true → Returned + hoàn kho; approve=false → về Delivered.
+    [HttpPost("{id:guid}/return/{decision}")]
+    [Authorize(Roles = "Seller,Admin")]
+    public async Task<IActionResult> ResolveReturn(Guid id, string decision)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse.Fail("Không xác định được người dùng"));
+
+        var approve = decision.Equals("approve", StringComparison.OrdinalIgnoreCase);
+        if (!approve && !decision.Equals("reject", StringComparison.OrdinalIgnoreCase))
+            return BadRequest(ApiResponse.Fail("Hành động không hợp lệ (approve|reject)"));
+
+        var order = await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy đơn hàng"));
+
+        var isAdmin = User.IsInRole("Admin");
+        var shopId = await GetSellerShopIdAsync(userId, isAdmin);
+        if (!isAdmin && !(shopId is Guid sid && order.OrderDetails.Any(d => d.Product!.ShopId == sid)))
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse.Fail("Bạn không có quyền xử lý đơn hàng này"));
+
+        if (order.Status != OrderStatus.ReturnRequested)
+            return BadRequest(ApiResponse.Fail("Đơn không ở trạng thái chờ trả hàng"));
+
+        if (approve)
+        {
+            order.Status = OrderStatus.Returned;
+            RestoreStock(order);
+        }
+        else
+        {
+            order.Status = OrderStatus.Delivered;
+        }
+        await _db.SaveChangesAsync();
+
+        var dto = BuildDtoFromLoaded(order, isAdmin ? null : shopId, true);
+        return Ok(ApiResponse<OrderDto>.Ok(dto,
+            approve ? "Đã duyệt trả hàng" : "Đã từ chối yêu cầu trả hàng"));
     }
 
     [HttpGet("{id:guid}")]
@@ -245,7 +345,7 @@ public class OrdersController : ControllerBase
                 ApiResponse.Fail("Bạn không có quyền xem đơn hàng này"));
         }
 
-        var dto = BuildDtoFromLoaded(order, shopFilter);
+        var dto = BuildDtoFromLoaded(order, shopFilter, isAdmin || shopFilter.HasValue);
         return Ok(ApiResponse<OrderDto>.Ok(dto, "OK"));
     }
 
@@ -277,20 +377,29 @@ public class OrdersController : ControllerBase
                     ApiResponse.Fail("Bạn không có quyền cập nhật đơn hàng này"));
         }
 
-        // Không cho đổi trạng thái đơn đã kết thúc
-        if (order.Status is OrderStatus.Delivered or OrderStatus.Cancelled)
+        // Đơn đã kết thúc/đã giao/đang xử lý trả hàng → không đổi qua dropdown trạng thái.
+        // (Delivered do khách xác nhận; trả hàng đi qua các endpoint /return riêng.)
+        if (order.Status is OrderStatus.Delivered or OrderStatus.Cancelled
+            or OrderStatus.ReturnRequested or OrderStatus.Returned)
             return BadRequest(ApiResponse.Fail(
                 $"Đơn đã ở trạng thái '{order.Status}', không thể thay đổi"));
 
-        // 'Delivered' là hành động xác nhận nhận hàng của khách; seller tối đa 'Shipped'.
+        // 'Delivered'/'Returned' không đặt trực tiếp qua đây.
         if (!isAdmin && newStatus == OrderStatus.Delivered)
             return BadRequest(ApiResponse.Fail(
                 "Trạng thái 'Delivered' do khách xác nhận khi nhận hàng"));
+        if (newStatus is OrderStatus.ReturnRequested or OrderStatus.Returned)
+            return BadRequest(ApiResponse.Fail(
+                "Trạng thái trả hàng dùng các thao tác trả hàng riêng"));
+
+        // Hủy đơn → hoàn lại tồn kho.
+        if (newStatus == OrderStatus.Cancelled)
+            RestoreStock(order);
 
         order.Status = newStatus;
         await _db.SaveChangesAsync();
 
-        var dto = BuildDtoFromLoaded(order, shopFilter);
+        var dto = BuildDtoFromLoaded(order, shopFilter, isAdmin || shopFilter.HasValue);
         return Ok(ApiResponse<OrderDto>.Ok(dto, "Đã cập nhật trạng thái đơn hàng"));
     }
 
@@ -312,7 +421,7 @@ public class OrdersController : ControllerBase
         return shop?.Id;
     }
 
-    private static OrderDto BuildDtoFromLoaded(Order order, Guid? shopFilter)
+    private static OrderDto BuildDtoFromLoaded(Order order, Guid? shopFilter, bool canManage)
     {
         var details = order.OrderDetails.AsEnumerable();
         if (shopFilter is Guid sid)
@@ -366,13 +475,23 @@ public class OrdersController : ControllerBase
                 address?.District ?? string.Empty,
                 address?.City ?? string.Empty),
             items,
-            items.Sum(i => i.Quantity));
+            items.Sum(i => i.Quantity),
+            canManage);
     }
 
     private bool TryGetUserId(out Guid userId)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(userIdClaim, out userId);
+    }
+
+    // Hoàn lại tồn kho cho mọi sản phẩm trong đơn (khi hủy / trả hàng).
+    // Yêu cầu order được nạp kèm OrderDetails.Product (BaseQuery).
+    private static void RestoreStock(Order order)
+    {
+        foreach (var d in order.OrderDetails)
+            if (d.Product != null)
+                d.Product.StockQuantity += d.Quantity;
     }
 
     private async Task<string> GenerateOrderCodeAsync()
@@ -434,6 +553,8 @@ public class OrdersController : ControllerBase
                 address.District,
                 address.City),
             items,
-            items.Sum(i => i.Quantity));
+            items.Sum(i => i.Quantity),
+            // Đơn vừa tạo là của người mua → không có quyền quản lý trạng thái.
+            false);
     }
 }

@@ -391,6 +391,55 @@ pub async fn admin_reject_shop(token: &str, id: &str) -> Result<ShopInfo, ApiErr
     envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
 }
 
+/// Admin temporarily bans a shop for violations (products hidden).
+pub async fn admin_ban_shop(token: &str, id: &str) -> Result<ShopInfo, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}/admin/shops/{id}/ban"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    let envelope: ApiEnvelope<ShopInfo> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Admin lifts a temporary ban (products shown again).
+pub async fn admin_unban_shop(token: &str, id: &str) -> Result<ShopInfo, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}/admin/shops/{id}/unban"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    let envelope: ApiEnvelope<ShopInfo> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Admin permanently bans (deletes) a shop. Returns the server's message
+/// (hard delete vs soft delete depending on whether the shop has order history).
+pub async fn admin_delete_shop(token: &str, id: &str) -> Result<String, ApiError> {
+    let resp = Request::delete(&format!("{API_BASE}/admin/shops/{id}"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    let envelope: ApiEnvelope<serde_json::Value> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    Ok(envelope.message)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProductPayload {
@@ -999,6 +1048,9 @@ pub struct Order {
     pub address: OrderAddress,
     pub items: Vec<OrderItem>,
     pub item_count: i32,
+    /// Viewer may manage this order's status (seller who owns items, or admin).
+    #[serde(default)]
+    pub can_manage: bool,
 }
 
 pub async fn create_order(token: &str, payload: &CreateOrderPayload) -> Result<Order, ApiError> {
@@ -1148,6 +1200,45 @@ pub async fn confirm_received(token: &str, id: &str) -> Result<Order, ApiError> 
     }
 
     envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Shared helper for the simple POST /orders/{id}/{action} endpoints that return an Order.
+async fn order_action(token: &str, path: String) -> Result<Order, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}{path}"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+
+    let envelope: ApiEnvelope<Order> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Buyer cancels their own order (only before it ships). Restores stock server-side.
+pub async fn cancel_order(token: &str, id: &str) -> Result<Order, ApiError> {
+    order_action(token, format!("/orders/{id}/cancel")).await
+}
+
+/// Buyer requests a return after receiving the order (Delivered → ReturnRequested).
+pub async fn request_return(token: &str, id: &str) -> Result<Order, ApiError> {
+    order_action(token, format!("/orders/{id}/return")).await
+}
+
+/// Seller/admin resolves a return request. `approve=true` → Returned, else back to Delivered.
+pub async fn resolve_return(token: &str, id: &str, approve: bool) -> Result<Order, ApiError> {
+    let action = if approve { "approve" } else { "reject" };
+    order_action(token, format!("/orders/{id}/return/{action}")).await
 }
 
 pub async fn delete_product(token: &str, id: &str) -> Result<(), ApiError> {

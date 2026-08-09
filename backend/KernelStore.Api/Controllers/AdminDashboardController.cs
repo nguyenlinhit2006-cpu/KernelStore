@@ -31,9 +31,9 @@ public class AdminDashboardController : ControllerBase
         var activeProducts = await _db.Products.CountAsync(p => p.IsActive);
         var totalOrders = await _db.Orders.CountAsync();
 
-        // Doanh thu = tổng các đơn không bị hủy
+        // Doanh thu = tổng các đơn không bị hủy / không bị trả hàng
         var totalRevenue = await _db.Orders
-            .Where(o => o.Status != OrderStatus.Cancelled)
+            .Where(o => o.Status != OrderStatus.Cancelled && o.Status != OrderStatus.Returned)
             .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
 
         var grouped = await _db.Orders
