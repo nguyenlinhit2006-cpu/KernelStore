@@ -31,18 +31,36 @@ KernelStore/
 │       └── components/ → input, loading (typewriter), error (kernel panic), toast
 ├── shell.nix          → dev environment (NixOS)
 ├── docker-compose.yml
+├── run.sh             → NixOS: dựng cả stack DB+backend+frontend (1 lệnh)
 ├── seed.sh            → seed dữ liệu mẫu (1 lệnh)
+├── win-run-all.bat    → Windows: bật DB + mở backend & frontend (2 cửa sổ)
+├── win-db.bat / win-backend.bat / win-frontend.bat / win-seed.bat → Windows: từng service
 ├── test_phase{1,2,3,4,5,6}_api.sh → API tests theo phase (curl + jq)
 ├── test_chat_api.sh   → Chat realtime tests (REST + WebSocket, 27 checks)
 ├── test/wsclient/     → C# probe WebSocket (test_chat_api.sh tự build)
 ├── test_full_api.sh    → smoke test end-to-end mọi vai trò (52 checks)
 ├── test_extra_api.sh   → các chức năng còn lại (58 checks)
-└── README.md
+├── README.md          → hướng dẫn chính (NixOS)
+└── README-Windows.md  → hướng dẫn chạy trên Windows (+ file .bat)
 ```
 
 ## Chạy nhanh (TL;DR)
 
 Cần **3 thành phần chạy cùng lúc**, đúng thứ tự: **Database → Backend → Frontend**. Thiếu backend là frontend sẽ báo `NetworkError when attempting to fetch resource` khi đăng ký/đăng nhập.
+
+**Cách nhanh nhất — một lệnh:**
+
+```sh
+# NixOS/Linux  → dựng cả stack (DB + backend + frontend), Ctrl+C để tắt
+nix-shell --run ./run.sh
+```
+
+```bat
+:: Windows  → double-click win-run-all.bat (mở backend + frontend trong 2 cửa sổ)
+win-run-all.bat
+```
+
+**Hoặc chạy tay từng terminal:**
 
 ```sh
 # Terminal 1 — Database (Postgres 16)
@@ -55,7 +73,9 @@ nix-shell --run "dotnet run --project backend/KernelStore.Api --urls http://loca
 nix-shell --run "cd frontend && trunk serve --port 8080"
 ```
 
-Mở trình duyệt tại **`http://localhost:8080`**. Đợi Terminal 2 in ra `Now listening on: http://localhost:5000` **trước khi** thao tác đăng ký/đăng nhập.
+Trên Windows, thay 3 lệnh trên bằng: `win-db.bat` → `win-backend.bat` → `win-frontend.bat` (xem [README-Windows.md](./README-Windows.md)).
+
+Mở trình duyệt tại **`http://localhost:8080`**. Đợi backend in ra `Now listening on: http://localhost:5000` **trước khi** thao tác đăng ký/đăng nhập.
 
 > Seed dữ liệu mẫu (tuỳ chọn): dừng backend, chạy `./seed.sh`, rồi bật lại backend.
 
@@ -123,6 +143,16 @@ trunk serve --port 8080        # build WASM + tailwind, hot-reload
 
 Mở **`http://localhost:8080`**.
 
+### Chạy lại nhanh (một lệnh)
+
+Thay cho các bước 2–5 ở trên, dùng script `run.sh` để dựng cả stack trong **một terminal**:
+
+```sh
+nix-shell --run ./run.sh
+```
+
+Script tự: `docker compose up -d` → đợi Postgres healthy → chạy backend nền (log ở `/tmp/kernelstore-backend.log`) → đợi `:5000` phản hồi → chạy frontend foreground. Nhấn **Ctrl+C** để dừng frontend và tự tắt backend (Postgres vẫn chạy; `docker compose down` để tắt hẳn). Seed dữ liệu mẫu vẫn dùng `nix-shell --run ./seed.sh` ở terminal khác khi backend đã sẵn sàng.
+
 ### Tài khoản mặc định
 
 | Vai trò   | Email               | Mật khẩu       | Nguồn            |
@@ -135,9 +165,9 @@ Mở **`http://localhost:8080`**.
 ### Chạy test (API còn sống trên :5000)
 
 ```sh
-nix-shell --run ./test_phase1_api.sh     # Auth               (19 checks)
-nix-shell --run ./test_phase2_api.sh     # Shop & Seller      (23 checks)
-nix-shell --run ./test_phase3_api.sh     # Product & Category (30 checks)
+nix-shell --run ./test_phase1_api.sh     # Auth               (21 checks)
+nix-shell --run ./test_phase2_api.sh     # Shop & Seller      (14 checks)
+nix-shell --run ./test_phase3_api.sh     # Product & Category (27 checks)
 nix-shell --run ./test_phase4_api.sh     # Cart & Checkout   (22 checks)
 nix-shell --run ./test_phase5_api.sh     # Review & Rating   (15 checks)
 nix-shell --run ./test_phase6_api.sh     # Admin Panel       (32 checks)
@@ -148,18 +178,23 @@ nix-shell --run ./test_extra_api.sh      # Các chức năng còn lại  (58 che
 
 ### Kết quả test gần nhất (2026-08-09)
 
-Toàn bộ chức năng hiện có đã được chạy lại và đều PASS:
+Toàn bộ chức năng hiện có đã được chạy lại (Postgres + backend `:5000`) và đều PASS — **268/268 checks trên 9 bộ test**:
 
 | Bộ test | Kết quả | Phạm vi |
 |---------|---------|---------|
+| `test_phase1_api.sh` | ✅ 21/21 PASS | Auth: register/login/sai mật khẩu→401/me/refresh + rotation (reuse→401), RBAC token |
+| `test_phase2_api.sh` | ✅ 14/14 PASS | Shop & Seller: mở shop→Pending→admin approve→Approved, cập nhật shop, phân quyền |
+| `test_phase3_api.sh` | ✅ 27/27 PASS | Product & Category: CRUD, cross-seller 404, phân trang, ẩn sản phẩm inactive |
+| `test_phase4_api.sh` | ✅ 22/22 PASS | Cart & Checkout: add/update, vượt stock→lỗi, tạo đơn trừ stock, seller đổi status |
+| `test_phase5_api.sh` | ✅ 15/15 PASS | Review: chưa nhận hàng→403, mua→ship→confirm→Delivered mới review, average, chống trùng |
+| `test_phase6_api.sh` | ✅ 32/32 PASS | Admin: dashboard (8 bucket status), ban/unban user, category CRUD + chặn xóa có con |
 | `test_full_api.sh` | ✅ 52/52 PASS | AUTH, browse công khai (categories/products/detail/featured/reviews/404), CART, ORDER (tạo/lịch sử/cancel), SELLER (shop→pending→approve, products CRUD, dashboard doanh thu, sales), ADMIN (duyệt shop, dashboard), vòng đời buy→Shipped→confirm→Delivered→review, RBAC/security |
 | `test_chat_api.sh` | ✅ 27/27 PASS | Auth 401 (REST+WS), mở hội thoại/idempotent/chặn shop mình/404, message rỗng/>2000→400, non-participant→403, unread, **realtime WS** push 2 chiều |
 | `test_extra_api.sh` | ✅ 58/58 PASS | Category CRUD (tạo con/đổi tên/chặn xóa gốc có con/404), shop settings + slug conflict, **Customer→Seller** (register Customer → mở shop nâng role Seller sau refresh → Pending → approve → Approved), **guard sản phẩm** (Pending/Banned không tạo/sửa được → 400; Approved tạo được), **ban tạm thời** (Banned → sản phẩm ẩn public 404/0, isActive=false; unban → hiện lại), **ban vĩnh viễn** (xóa cứng không đơn / xóa mềm `Deleted` có đơn + giữ lịch sử đơn + tên sản phẩm), admin user ban/unban (+ ban tự thân→400, bị ban→login 401), order cancel khôi phục stock, return flow (ship→confirm→ReturnRequested→approve→Returned), product delete, refresh-token rotation (reuse→401) |
-| Backend build | ✅ 0 lỗi | `dotnet build` |
-| Frontend build | ✅ 0 lỗi | `cargo build --target wasm32-unknown-unknown` (WASM) |
-| Migration | ✅ applied | `AddChat` đã apply (bảng `Conversations` + `ChatMessages`) |
 
-> Lưu ý lần verify này phát hiện + đã sửa 1 lỗ hổng: trước đây seller có shop **Pending/Banned vẫn tạo/sửa được sản phẩm** (guard `GetOwnShopIdAsync` không check trạng thái shop). Đã thêm check `shop.Status == Approved` cho `Create`/`Update`/`Delete` sản phẩm (`ProductsController.cs`); `GET /products/my` giữ nguyên để seller xem được sản phẩm của mình (kể cả khi bị ban). Test `test_full_api.sh` mục "product create while Pending → 400" trước đây là false-positive (400 do tên "P" 1 ký tự vi phạm MinLength) — đã sửa thành tên hợp lệ để 400 thực sự đến từ guard.
+> Lần verify này đã đồng bộ 2 bộ test phase cũ với hành vi backend hiện tại (không phải lỗi chức năng): `test_phase5_api.sh` — hàm `buy()` giờ đẩy đơn qua Confirmed→Processing→Shipped rồi `confirm-received`→Delivered vì review chỉ được phép sau khi khách đã nhận hàng; `test_phase6_api.sh` — dashboard trả **8 bucket** trạng thái đơn (enum `OrderStatus` đã thêm `Cancelled`/`ReturnRequested`/`Returned` từ luồng cancel/return), sửa assertion 6→8.
+
+> Ghi chú lịch sử (lần verify trước): đã phát hiện + sửa 1 lỗ hổng — seller có shop **Pending/Banned vẫn tạo/sửa được sản phẩm** (guard `GetOwnShopIdAsync` không check trạng thái shop). Đã thêm check `shop.Status == Approved` cho `Create`/`Update`/`Delete` sản phẩm (`ProductsController.cs`); `GET /products/my` giữ nguyên để seller vẫn xem được sản phẩm của mình (kể cả khi bị ban).
 
 > Ghi chú: các test UI qua Selenium (`test_*_ui.py`) và test Python khác nêu ở mục [Test](#test) nằm ngoài repo này (chạy môi trường có browser automation), nên không được chạy lại trong lần verify này.
 

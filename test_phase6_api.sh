@@ -59,7 +59,7 @@ check "dashboard success" "$(echo "$D" | jq -r '.success')" "true"
 check_ge "totalUsers >= 3" "$(echo "$D" | jq -r '.data.totalUsers')" "3"
 check_ge "totalShops >= 1" "$(echo "$D" | jq -r '.data.totalShops')" "1"
 check_ge "pendingShops >= 1" "$(echo "$D" | jq -r '.data.pendingShops')" "1"
-check "ordersByStatus has 6 buckets" "$(echo "$D" | jq -r '.data.ordersByStatus | length')" "6"
+check "ordersByStatus has 8 buckets" "$(echo "$D" | jq -r '.data.ordersByStatus | length')" "8"
 check "totalRevenue present" "$([ "$(echo "$D" | jq -r '.data.totalRevenue')" != "null" ] && echo yes || echo no)" "yes"
 
 # ── test case: non-admin → 403 ────────────────────────────────────────────

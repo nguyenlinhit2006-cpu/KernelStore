@@ -12,6 +12,22 @@ Tổng quan 3 tiến trình cần bật:
 
 ---
 
+## Cách nhanh nhất — file `.bat` (sau khi đã cài công cụ ở mục 0)
+
+Đã có sẵn các file `.bat` ở thư mục gốc, **double-click từ Explorer** hoặc chạy trong PowerShell/CMD:
+
+| File | Việc |
+|------|------|
+| `win-run-all.bat` | Bật DB → đợi Postgres healthy → mở **backend** và **frontend** trong 2 cửa sổ mới. Chạy 1 file là xong. |
+| `win-db.bat`       | Chỉ bật Database (Docker). |
+| `win-backend.bat`  | Chỉ chạy Backend API (`:5000`). |
+| `win-frontend.bat` | Chỉ chạy Frontend (`:8080`). |
+| `win-seed.bat`     | Seed dữ liệu mẫu (chạy sau khi backend đã sẵn sàng). |
+
+> Lần đầu vẫn phải cài toolchain ở **mục 0** (dotnet/rust/trunk/Docker) và bật **Docker Desktop**. Sau khi `win-run-all.bat` chạy, đợi cửa sổ backend in `Now listening on: http://localhost:5000` rồi mở trình duyệt tại **`http://localhost:8080`**. Muốn hiểu từng bước thủ công, đọc tiếp bên dưới.
+
+---
+
 ## 0. Cài đặt công cụ (một lần)
 
 Khuyến nghị dùng **winget** (có sẵn trên Windows 10/11) để cài nhanh. Mở **PowerShell** rồi chạy:
@@ -88,7 +104,7 @@ dotnet run --project backend\KernelStore.Api --urls http://localhost:5000
 dotnet run --project backend\KernelStore.Api --no-launch-profile seed
 ```
 
-Tạo 5 danh mục, 2 shop (Approved) + 8 sản phẩm. Idempotent — chạy lại sẽ báo `already present`.
+Hoặc double-click **`win-seed.bat`** (chạy đúng lệnh trên). Tạo 5 danh mục, 2 shop (Approved) + 8 sản phẩm. Idempotent — chạy lại sẽ báo `already present`.
 
 ---
 

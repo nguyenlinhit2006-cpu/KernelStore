@@ -36,11 +36,15 @@ signup() {
   req POST /auth/login "" "{\"email\":\"${email}\",\"password\":\"Passw0rd!\"}" | jq -r '.data.accessToken'
 }
 
-# Places an order for a single unit of $PRODUCT_ID with the given token.
+# Places an order for a single unit of $PRODUCT_ID with the given token and
+# drives it all the way to Delivered (seller ships → buyer confirms receipt),
+# because a review is only allowed once the buyer has received the item.
 buy() {
-  local token="$1"
+  local token="$1" oid
   req POST /cart "$token" "{\"productId\":\"${PRODUCT_ID}\",\"quantity\":1}" >/dev/null
-  req POST /orders "$token" '{"fullName":"Buyer","phone":"0901234567","street":"1 St","ward":"W","district":"D","city":"C","note":""}' >/dev/null
+  oid="$(req POST /orders "$token" '{"fullName":"Buyer","phone":"0901234567","street":"1 St","ward":"W","district":"D","city":"C","note":""}' | jq -r '.data.id')"
+  for s in Confirmed Processing Shipped; do req PUT "/orders/${oid}/status" "$SELLER_TOKEN" "{\"status\":\"$s\"}" >/dev/null; done
+  req POST "/orders/${oid}/confirm-received" "$token" >/dev/null
 }
 
 echo "=== Phase 5 API tests (ts=${TS}) ==="
