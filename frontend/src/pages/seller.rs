@@ -819,7 +819,42 @@ fn ProductForm(
     // In edit mode the slug is pre-filled, so don't overwrite it from the name.
     let slug_edited = RwSignal::new(is_edit);
     let submitting = RwSignal::new(false);
+    let uploading = RwSignal::new(false);
     let error = RwSignal::new(String::new());
+
+    // Upload files picked from disk (jpg/png/svg), appending each returned URL
+    // to the image list so they're saved with the product on submit.
+    let on_pick_files = move |ev: web_sys::Event| {
+        use wasm_bindgen::JsCast;
+        let Some(input) = ev.target().and_then(|t| t.dyn_into::<web_sys::HtmlInputElement>().ok())
+        else { return };
+        let Some(files) = input.files() else { return };
+        let mut picked = Vec::new();
+        for i in 0..files.length() {
+            if let Some(f) = files.item(i) {
+                picked.push(f);
+            }
+        }
+        input.set_value(""); // let the same file be re-picked later
+        if picked.is_empty() {
+            return;
+        }
+        let token = auth.token.get().unwrap_or_default();
+        error.set(String::new());
+        uploading.set(true);
+        spawn_local(async move {
+            for f in picked {
+                match crate::api::upload_image(&token, &f).await {
+                    Ok(url) => {
+                        let cur = images.get();
+                        images.set(if cur.trim().is_empty() { url } else { format!("{cur}\n{url}") });
+                    }
+                    Err(e) => error.set(e.to_string()),
+                }
+            }
+            uploading.set(false);
+        });
+    };
 
     let on_name = move |_v: String| {
         if !slug_edited.get() {
@@ -929,7 +964,40 @@ fn ProductForm(
                 </select>
             </div>
 
-            <label class="block mb-1 text-xs term-muted">"image urls (one per line)"</label>
+            <label class="block mb-1 text-xs term-muted">"images — upload from computer (jpg, png, svg)"</label>
+            <div class="flex items-center gap-2 mb-2">
+                <span class="term-info text-sm shrink-0">">"</span>
+                <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/svg+xml,.jpg,.jpeg,.png,.svg"
+                    multiple
+                    class="term-input w-full px-3 py-2 text-sm file:mr-3 file:px-2 file:py-1 file:border-0 file:bg-[var(--fg-primary)] file:text-[var(--bg-primary)] file:cursor-pointer"
+                    disabled=move || uploading.get()
+                    on:change=on_pick_files
+                />
+                <span class="text-xs term-muted shrink-0" class:invisible=move || !uploading.get()>
+                    "uploading…"
+                </span>
+            </div>
+
+            {move || {
+                let urls: Vec<String> = images.get().lines()
+                    .map(|l| l.trim().to_string()).filter(|l| !l.is_empty()).collect();
+                if urls.is_empty() {
+                    view! { <span></span> }.into_any()
+                } else {
+                    view! {
+                        <div class="flex flex-wrap gap-2 mb-2">
+                            {urls.into_iter().map(|u| view! {
+                                <img src=u.clone() alt="preview" title=u
+                                    class="h-14 w-14 object-cover rounded border border-[var(--border)] bg-[var(--bg-tertiary)]"/>
+                            }).collect_view()}
+                        </div>
+                    }.into_any()
+                }
+            }}
+
+            <label class="block mb-1 text-xs term-muted">"image urls (one per line — auto-filled by upload, editable)"</label>
             <div class="flex items-start gap-2 mb-3">
                 <span class="term-info text-sm shrink-0">">"</span>
                 <textarea

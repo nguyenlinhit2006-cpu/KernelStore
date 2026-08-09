@@ -1,7 +1,45 @@
 use gloo_net::http::Request;
 use serde::{Deserialize, Serialize};
+use web_sys::{File, FormData};
 
 pub const API_BASE: &str = "http://localhost:5000/api";
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct UploadResult {
+    pub url: String,
+}
+
+/// Uploads an image file (jpg/png/svg) picked from disk and returns its public
+/// URL. Sends multipart/form-data; the browser sets the boundary header.
+pub async fn upload_image(token: &str, file: &File) -> Result<String, ApiError> {
+    let form = FormData::new().map_err(|_| ApiError::Network("cannot build form".into()))?;
+    form.append_with_blob_and_filename("file", file, &file.name())
+        .map_err(|_| ApiError::Network("cannot attach file".into()))?;
+
+    let resp = Request::post(&format!("{API_BASE}/uploads/image"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(form)
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+
+    let envelope: ApiEnvelope<UploadResult> =
+        resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+
+    envelope
+        .data
+        .map(|d| d.url)
+        .ok_or_else(|| ApiError::Server("no url".into()))
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]

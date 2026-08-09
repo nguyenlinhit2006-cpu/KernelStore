@@ -108,6 +108,17 @@ if (!app.Environment.IsDevelopment())
 
 app.UseCors("FrontendPolicy");
 
+// Serve uploaded product images from wwwroot/uploads. Harden responses: nosniff
+// + a sandbox CSP so an uploaded SVG can never execute script if opened directly.
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        ctx.Context.Response.Headers["Content-Security-Policy"] = "sandbox; default-src 'none'";
+    }
+});
+
 app.UseWebSockets();
 
 app.UseAuthentication();

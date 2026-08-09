@@ -1,0 +1,3 @@
+# keep uploaded product images out of git; keep the folder
+*
+!.gitignore
