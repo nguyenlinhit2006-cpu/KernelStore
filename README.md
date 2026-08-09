@@ -32,7 +32,8 @@ KernelStore/
 ├── shell.nix          → dev environment (NixOS)
 ├── docker-compose.yml
 ├── seed.sh            → seed dữ liệu mẫu (1 lệnh)
-├── test_phase{4,5,6}_api.sh → API tests (curl + jq)
+├── test_phase{4,5,6}_api.sh → API tests theo phase (curl + jq)
+├── test_full_api.sh    → smoke test end-to-end mọi vai trò (52 checks)
 └── README.md
 ```
 
@@ -134,6 +135,7 @@ Mở **`http://localhost:8080`**.
 nix-shell --run ./test_phase4_api.sh     # Cart & Checkout   (22 checks)
 nix-shell --run ./test_phase5_api.sh     # Review & Rating   (15 checks)
 nix-shell --run ./test_phase6_api.sh     # Admin Panel       (32 checks)
+nix-shell --run ./test_full_api.sh       # End-to-end mọi vai trò (52 checks)
 ```
 
 ### Build một lần (không chạy dev server)
@@ -281,6 +283,7 @@ Test API (Python, không cần Selenium):
 - `test_phase4_api.sh` — Phase 4 (curl + jq, chạy trong nix-shell): add-to-cart cập nhật, vượt stock báo lỗi, tạo đơn trừ stock + tạo Order/OrderDetails, đơn trống báo lỗi, tổng tiền = items + ship, seller đổi status → customer thấy + customer bị 403 (22 checks)
 - `test_phase5_api.sh` — Phase 5 (curl + jq, chạy trong nix-shell): chưa mua → 403, đã mua → đánh giá 1-5 + comment, chặn đánh giá trùng, rating 6 → 400, averageRating đúng ((4+2)/2=3), list newest-first, GET thiếu productId → 400, product không tồn tại → 404 (15 checks)
 - `test_phase6_api.sh` — Phase 6 (curl + jq, chạy trong nix-shell): dashboard stats (users/shops/pending/6 status buckets/revenue), non-admin → 403, duyệt shop → Approved + owner thành Seller, ban → không login (401) → unban → login lại (200), chặn ban chính mình + 404, admin orders (paginate/search/filter), category CRUD + chặn xóa khi có children, non-admin tạo category → 403 (32 checks)
+- `test_full_api.sh` — Smoke test end-to-end mọi vai trò (curl + jq, chạy trong nix-shell): auth (register/login/sai mật khẩu→401/me/refresh), browse công khai (categories/products/detail/featured/reviews/404), cart (add/update/delete), order (giỏ trống→400/tạo/lịch sử/xem), review trước khi nhận→403; seller: mở shop → tự nâng role Seller (sau refresh), tạo sản phẩm khi Pending→400, admin duyệt shop→Approved, tạo/sửa sản phẩm + dashboard doanh thu + mục sales; vòng đời buy→Shipped→khách xác nhận nhận hàng→Delivered→đánh giá (review trùng→400, seller không tự đặt Delivered→400); RBAC (customer chặn khỏi admin/seller, không token→401, không đổi status đơn, seller không duyệt shop). Trả exit code 0 nếu all pass (52 checks)
 
 ## Ghi chú kỹ thuật
 
