@@ -5,6 +5,7 @@ use leptos_router::path;
 use crate::auth::provide_auth;
 use crate::pages::admin::AdminPage;
 use crate::pages::cart::CartPage;
+use crate::pages::chat::ChatPage;
 use crate::pages::checkout::CheckoutPage;
 use crate::pages::home::HomePage;
 use crate::pages::login::LoginPage;
@@ -34,6 +35,7 @@ fn Header() -> impl IntoView {
                         view! {
                             <a href="/orders" class="term-btn px-2 py-0.5 text-xs">"orders"</a>
                             <a href="/cart" class="term-btn px-2 py-0.5 text-xs">"cart"</a>
+                            <a href="/chat" class="term-btn px-2 py-0.5 text-xs">"chat"</a>
                             {if u.role == "Admin" {
                                 view! { <a href="/admin" class="term-btn px-2 py-0.5 text-xs">"admin"</a> }.into_any()
                             } else {
@@ -90,6 +92,12 @@ pub fn App() -> impl IntoView {
                         <ProtectedRoute
                             path=path!("/cart")
                             view=CartPage
+                            condition=move || Some(auth.token.get().is_some_and(|t| !t.is_empty()))
+                            redirect_path=|| "/auth/login"
+                        />
+                        <ProtectedRoute
+                            path=path!("/chat")
+                            view=ChatPage
                             condition=move || Some(auth.token.get().is_some_and(|t| !t.is_empty()))
                             redirect_path=|| "/auth/login"
                         />

@@ -2,7 +2,10 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_params_map;
 
-use crate::api::{add_to_cart, get_product, get_reviews, ApiError, ProductDetail, ReviewInfo};
+use crate::api::{
+    add_to_cart, get_product, get_reviews, start_conversation, ApiError, ProductDetail,
+    ReviewInfo,
+};
 use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
 use crate::components::loading::Loading;
@@ -77,13 +80,14 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
     let flash = RwSignal::new(String::new());
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
 
+    let nav_cart = navigate.clone();
     let on_add = move |_| {
         if adding.get() {
             return;
         }
         // Must be logged in to have a cart.
         let Some(token) = auth.token.get().filter(|t| !t.is_empty()) else {
-            navigate("/auth/login", Default::default());
+            nav_cart("/auth/login", Default::default());
             return;
         };
         adding.set(true);
@@ -101,6 +105,27 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                 }
             }
             adding.set(false);
+        });
+    };
+
+    let shop_id = product.shop.id.clone();
+    let on_chat = move |_| {
+        let Some(token) = auth.token.get().filter(|t| !t.is_empty()) else {
+            navigate("/auth/login", Default::default());
+            return;
+        };
+        let toasts = toasts.clone();
+        let navigate = navigate.clone();
+        let sid = shop_id.clone();
+        spawn_local(async move {
+            match start_conversation(&token, &sid).await {
+                Ok(convo) => {
+                    navigate(&format!("/chat?c={}", convo.id), Default::default());
+                }
+                Err(e) => {
+                    toasts.error(format!("Không thể chat với shop này: {e}"));
+                }
+            }
         });
     };
 
@@ -223,9 +248,14 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                     {(!product.shop.description.is_empty()).then(|| format!(" · {}", product.shop.description))}
                 </p>
             </div>
-            <a href=format!("/products?shop={}", product.shop.slug) class="term-btn px-4 py-2 text-sm shrink-0">
-                "view shop →"
-            </a>
+            <div class="flex gap-2">
+                <button class="term-btn px-4 py-2 text-sm shrink-0" on:click=on_chat>
+                    "chat with seller"
+                </button>
+                <a href=format!("/products?shop={}", product.shop.slug) class="term-btn px-4 py-2 text-sm shrink-0">
+                    "view shop →"
+                </a>
+            </div>
         </div>
 
         // ── Reviews ─────────────────────────────────────────────────────

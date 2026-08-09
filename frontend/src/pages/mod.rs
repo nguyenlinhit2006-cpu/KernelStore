@@ -1,5 +1,6 @@
 pub mod admin;
 pub mod cart;
+pub mod chat;
 pub mod checkout;
 pub mod home;
 pub mod login;

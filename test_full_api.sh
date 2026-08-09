@@ -66,7 +66,7 @@ chk "create shop 200" "$(code POST /shops "$ST" "{\"name\":\"Test Shop $TS\",\"s
 ST=$(req POST /auth/refresh "" "{\"refreshToken\":\"$SR\"}" | jq -r '.data.accessToken')  # refresh -> Seller role
 chk "role now Seller" "$(req GET /auth/me "$ST" | jq -r '.data.info.role')" "Seller"
 chk "shop status Pending" "$(req GET /shops/me "$ST" | jq -r '.data.status')" "Pending"
-chk "product create while Pending -> 400" "$(code POST /products "$ST" "{\"name\":\"P\",\"slug\":\"p-$TS\",\"description\":\"d\",\"price\":10,\"stockQuantity\":5,\"sku\":\"S$TS\",\"images\":[]}")" "400"
+chk "product create while Pending -> 400" "$(code POST /products "$ST" "{\"name\":\"Prod\",\"slug\":\"p-$TS\",\"description\":\"d\",\"price\":10,\"stockQuantity\":5,\"sku\":\"S$TS\",\"images\":[]}")" "400"
 SHOPID=$(req GET /shops/me "$ST" | jq -r '.data.id')
 
 echo "================ ADMIN: moderation ================"

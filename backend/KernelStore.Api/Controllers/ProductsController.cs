@@ -197,7 +197,7 @@ public class ProductsController : ControllerBase
         return ids;
     }
 
-    private async Task<(Guid shopId, bool ok)> GetOwnShopIdAsync()
+    private async Task<(Guid shopId, bool ok)> GetOwnShopIdAsync(bool requireApproved = true)
     {
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userIdClaim, out var userId))
@@ -205,6 +205,9 @@ public class ProductsController : ControllerBase
 
         var shop = await _db.Shops.FirstOrDefaultAsync(s => s.OwnerId == userId);
         if (shop == null)
+            return (Guid.Empty, false);
+
+        if (requireApproved && shop.Status != ShopStatus.Approved)
             return (Guid.Empty, false);
 
         return (shop.Id, true);
@@ -219,6 +222,9 @@ public class ProductsController : ControllerBase
         var shop = await _db.Shops.FirstOrDefaultAsync(s => s.OwnerId == userId);
         if (shop == null)
             return (null, BadRequest(ApiResponse.Fail("Bạn chưa có shop")));
+
+        if (shop.Status != ShopStatus.Approved)
+            return (null, BadRequest(ApiResponse.Fail("Bạn chưa có shop hoặc shop chưa được duyệt")));
 
         var product = await _db.Products.FirstOrDefaultAsync(p => p.Id == id && p.ShopId == shop.Id);
         if (product == null)
@@ -269,7 +275,7 @@ public class ProductsController : ControllerBase
     [HttpGet("my")]
     public async Task<IActionResult> GetMy()
     {
-        var (shopId, ok) = await GetOwnShopIdAsync();
+        var (shopId, ok) = await GetOwnShopIdAsync(requireApproved: false);
         if (!ok)
             return Ok(ApiResponse<List<ProductDto>>.Ok(new List<ProductDto>(), "Chưa có shop"));
 

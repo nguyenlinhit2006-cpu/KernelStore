@@ -1256,3 +1256,133 @@ pub async fn delete_product(token: &str, id: &str) -> Result<(), ApiError> {
 
     Ok(())
 }
+
+// ─────────────────────────── Chat ───────────────────────────
+
+/// WebSocket endpoint for realtime chat (server pushes incoming messages).
+pub const CHAT_WS_BASE: &str = "ws://localhost:5000/ws/chat";
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConversationInfo {
+    pub id: String,
+    pub shop_id: String,
+    pub shop_name: String,
+    pub buyer_id: String,
+    pub buyer_name: String,
+    pub other_name: String,
+    pub last_message: Option<String>,
+    pub last_message_at: String,
+    pub unread_count: i32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChatMessageInfo {
+    pub id: String,
+    pub conversation_id: String,
+    pub sender_id: String,
+    pub content: String,
+    pub created_at: String,
+}
+
+pub async fn list_conversations(token: &str) -> Result<Vec<ConversationInfo>, ApiError> {
+    let resp = Request::get(&format!("{API_BASE}/chat/conversations"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    let envelope: ApiEnvelope<Vec<ConversationInfo>> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        return Err(ApiError::Server(envelope.errors.first().cloned().unwrap_or(envelope.message)));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Buyer starts (or re-opens) a conversation with a shop.
+pub async fn start_conversation(token: &str, shop_id: &str) -> Result<ConversationInfo, ApiError> {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Body<'a> { shop_id: &'a str }
+    let resp = Request::post(&format!("{API_BASE}/chat/conversations"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(serde_json::to_string(&Body { shop_id }).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    let envelope: ApiEnvelope<ConversationInfo> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        return Err(ApiError::Server(envelope.errors.first().cloned().unwrap_or(envelope.message)));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+pub async fn get_messages(token: &str, conversation_id: &str) -> Result<Vec<ChatMessageInfo>, ApiError> {
+    let resp = Request::get(&format!("{API_BASE}/chat/conversations/{conversation_id}/messages"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    let envelope: ApiEnvelope<Vec<ChatMessageInfo>> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        return Err(ApiError::Server(envelope.errors.first().cloned().unwrap_or(envelope.message)));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+pub async fn send_message(token: &str, conversation_id: &str, content: &str) -> Result<ChatMessageInfo, ApiError> {
+    #[derive(Serialize)]
+    struct Body<'a> { content: &'a str }
+    let resp = Request::post(&format!("{API_BASE}/chat/conversations/{conversation_id}/messages"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(serde_json::to_string(&Body { content }).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    let envelope: ApiEnvelope<ChatMessageInfo> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        return Err(ApiError::Server(envelope.errors.first().cloned().unwrap_or(envelope.message)));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Opens a chat WebSocket. `on_message` fires for each pushed message.
+/// Returns the socket (keep it alive for the connection to stay open).
+pub fn open_chat_socket(
+    token: &str,
+    on_message: impl Fn(ChatMessageInfo) + 'static,
+) -> Result<web_sys::WebSocket, String> {
+    use wasm_bindgen::closure::Closure;
+    use wasm_bindgen::JsCast;
+
+    let url = format!("{CHAT_WS_BASE}?access_token={token}");
+    let ws = web_sys::WebSocket::new(&url).map_err(|e| format!("{e:?}"))?;
+
+    let onmessage = Closure::<dyn FnMut(web_sys::MessageEvent)>::new(move |e: web_sys::MessageEvent| {
+        if let Some(txt) = e.data().as_string() {
+            if let Ok(msg) = serde_json::from_str::<ChatMessageInfo>(&txt) {
+                on_message(msg);
+            }
+        }
+    });
+    ws.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
+    onmessage.forget(); // keep the callback alive for the socket's lifetime
+
+    Ok(ws)
+}
