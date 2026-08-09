@@ -153,6 +153,28 @@ RR=$(req POST /auth/login "" "{\"email\":\"exbuyer${TS}@t.com\",\"password\":\"P
 req POST /auth/refresh "" "{\"refreshToken\":\"$RR\"}" >/dev/null
 chk "refresh-token reuse -> 401" "$(code POST /auth/refresh "" "{\"refreshToken\":\"$RR\"}")" "401"
 
+echo "--- product image upload (jpg/png/svg) ---"
+UPSVG="$(mktemp --suffix=.svg)"
+printf '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="lime"/></svg>' > "$UPSVG"
+UPTXT="$(mktemp --suffix=.txt)"; echo nope > "$UPTXT"
+UPPNG="$(mktemp --suffix=.png)"
+printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' | base64 -d > "$UPPNG"
+chk "upload without auth -> 401" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$B/uploads/image" -F "file=@$UPSVG;type=image/svg+xml")" "401"
+chk "upload bad ext (.txt) -> 400" "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$B/uploads/image" -H "Authorization: Bearer $S1" -F "file=@$UPTXT;type=text/plain")" "400"
+IMGURL=$(curl -s -X POST "$B/uploads/image" -H "Authorization: Bearer $S1" -F "file=@$UPSVG;type=image/svg+xml" | jq -r '.data.url')
+[ -n "$IMGURL" ] && [ "$IMGURL" != "null" ] && ok "upload svg returns url" || bad "upload svg returns url"
+chk "uploaded file served -> 200" "$(curl -s -o /dev/null -w '%{http_code}' "$IMGURL")" "200"
+chk "served file has nosniff header" "$(curl -s -D - -o /dev/null "$IMGURL" | grep -ci 'X-Content-Type-Options: nosniff')" "1"
+IMGSLUG="img-prod-$TS"
+IPID=$(req POST /products "$S1" "{\"name\":\"Img Prod $TS\",\"slug\":\"$IMGSLUG\",\"description\":\"d\",\"price\":30,\"stockQuantity\":5,\"sku\":\"IMG$TS\",\"isActive\":true,\"images\":[\"$IMGURL\"]}" | jq -r '.data.id')
+[ -n "$IPID" ] && [ "$IPID" != "null" ] && ok "seller create product with uploaded image" || bad "seller create product with uploaded image"
+chk "buyer sees uploaded image on detail" "$(req GET "/products/$IMGSLUG" | jq -r '.data.images[0].url')" "$IMGURL"
+IMG2=$(curl -s -X POST "$B/uploads/image" -H "Authorization: Bearer $S1" -F "file=@$UPPNG;type=image/png" | jq -r '.data.url')
+req PUT "/products/$IPID" "$S1" "{\"name\":\"Img Prod $TS\",\"slug\":\"$IMGSLUG\",\"description\":\"d\",\"price\":30,\"salePrice\":null,\"stockQuantity\":5,\"sku\":\"IMG$TS\",\"isActive\":true,\"images\":[\"$IMG2\"]}" >/dev/null
+chk "seller edit replaces image; buyer sees new one" "$(req GET "/products/$IMGSLUG" | jq -r '.data.images[0].url')" "$IMG2"
+req DELETE "/products/$IPID" "$S1" >/dev/null
+rm -f "$UPSVG" "$UPTXT" "$UPPNG"
+
 echo ""
 echo "================================================="
 echo " RESULT: PASS=$PASS  FAIL=$FAIL"

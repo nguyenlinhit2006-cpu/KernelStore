@@ -39,7 +39,7 @@ KernelStore/
 ├── test_chat_api.sh   → Chat realtime tests (REST + WebSocket, 27 checks)
 ├── test/wsclient/     → C# probe WebSocket (test_chat_api.sh tự build)
 ├── test_full_api.sh    → smoke test end-to-end mọi vai trò (52 checks)
-├── test_extra_api.sh   → các chức năng còn lại (58 checks)
+├── test_extra_api.sh   → các chức năng còn lại (66 checks)
 ├── README.md          → hướng dẫn chính (NixOS)
 └── README-Windows.md  → hướng dẫn chạy trên Windows (+ file .bat)
 ```
@@ -173,12 +173,12 @@ nix-shell --run ./test_phase5_api.sh     # Review & Rating   (15 checks)
 nix-shell --run ./test_phase6_api.sh     # Admin Panel       (32 checks)
 nix-shell --run ./test_chat_api.sh       # Chat realtime     (27 checks, tự build wsclient)
 nix-shell --run ./test_full_api.sh       # End-to-end mọi vai trò (52 checks)
-nix-shell --run ./test_extra_api.sh      # Các chức năng còn lại  (58 checks)
+nix-shell --run ./test_extra_api.sh      # Các chức năng còn lại  (66 checks)
 ```
 
 ### Kết quả test gần nhất (2026-08-09)
 
-Toàn bộ chức năng hiện có đã được chạy lại (Postgres + backend `:5000`) và đều PASS — **268/268 checks trên 9 bộ test**:
+Toàn bộ chức năng hiện có đã được chạy lại (Postgres + backend `:5000`) và đều PASS — **276/276 checks trên 9 bộ test**:
 
 | Bộ test | Kết quả | Phạm vi |
 |---------|---------|---------|
@@ -190,7 +190,7 @@ Toàn bộ chức năng hiện có đã được chạy lại (Postgres + backen
 | `test_phase6_api.sh` | ✅ 32/32 PASS | Admin: dashboard (8 bucket status), ban/unban user, category CRUD + chặn xóa có con |
 | `test_full_api.sh` | ✅ 52/52 PASS | AUTH, browse công khai (categories/products/detail/featured/reviews/404), CART, ORDER (tạo/lịch sử/cancel), SELLER (shop→pending→approve, products CRUD, dashboard doanh thu, sales), ADMIN (duyệt shop, dashboard), vòng đời buy→Shipped→confirm→Delivered→review, RBAC/security |
 | `test_chat_api.sh` | ✅ 27/27 PASS | Auth 401 (REST+WS), mở hội thoại/idempotent/chặn shop mình/404, message rỗng/>2000→400, non-participant→403, unread, **realtime WS** push 2 chiều |
-| `test_extra_api.sh` | ✅ 58/58 PASS | Category CRUD (tạo con/đổi tên/chặn xóa gốc có con/404), shop settings + slug conflict, **Customer→Seller** (register Customer → mở shop nâng role Seller sau refresh → Pending → approve → Approved), **guard sản phẩm** (Pending/Banned không tạo/sửa được → 400; Approved tạo được), **ban tạm thời** (Banned → sản phẩm ẩn public 404/0, isActive=false; unban → hiện lại), **ban vĩnh viễn** (xóa cứng không đơn / xóa mềm `Deleted` có đơn + giữ lịch sử đơn + tên sản phẩm), admin user ban/unban (+ ban tự thân→400, bị ban→login 401), order cancel khôi phục stock, return flow (ship→confirm→ReturnRequested→approve→Returned), product delete, refresh-token rotation (reuse→401) |
+| `test_extra_api.sh` | ✅ 66/66 PASS | Category CRUD (tạo con/đổi tên/chặn xóa gốc có con/404), shop settings + slug conflict, **Customer→Seller** (register Customer → mở shop nâng role Seller sau refresh → Pending → approve → Approved), **guard sản phẩm** (Pending/Banned không tạo/sửa được → 400; Approved tạo được), **ban tạm thời** (Banned → sản phẩm ẩn public 404/0, isActive=false; unban → hiện lại), **ban vĩnh viễn** (xóa cứng không đơn / xóa mềm `Deleted` có đơn + giữ lịch sử đơn + tên sản phẩm), admin user ban/unban (+ ban tự thân→400, bị ban→login 401), order cancel khôi phục stock, return flow (ship→confirm→ReturnRequested→approve→Returned), product delete, refresh-token rotation (reuse→401), **upload ảnh sản phẩm** (jpg/png/svg: thiếu auth→401, sai định dạng→400, upload→URL, file phục vụ 200 + header nosniff, seller tạo/sửa gắn ảnh → buyer thấy ảnh đúng) |
 
 > Lần verify này đã đồng bộ 2 bộ test phase cũ với hành vi backend hiện tại (không phải lỗi chức năng): `test_phase5_api.sh` — hàm `buy()` giờ đẩy đơn qua Confirmed→Processing→Shipped rồi `confirm-received`→Delivered vì review chỉ được phép sau khi khách đã nhận hàng; `test_phase6_api.sh` — dashboard trả **8 bucket** trạng thái đơn (enum `OrderStatus` đã thêm `Cancelled`/`ReturnRequested`/`Returned` từ luồng cancel/return), sửa assertion 6→8.
 
@@ -357,7 +357,7 @@ Test API (Python, không cần Selenium):
 - `test_phase5_api.sh` — Phase 5 (curl + jq, chạy trong nix-shell): chưa mua → 403, đã mua → đánh giá 1-5 + comment, chặn đánh giá trùng, rating 6 → 400, averageRating đúng ((4+2)/2=3), list newest-first, GET thiếu productId → 400, product không tồn tại → 404 (15 checks)
 - `test_phase6_api.sh` — Phase 6 (curl + jq, chạy trong nix-shell): dashboard stats (users/shops/pending/6 status buckets/revenue), non-admin → 403, duyệt shop → Approved + owner thành Seller, ban → không login (401) → unban → login lại (200), chặn ban chính mình + 404, admin orders (paginate/search/filter), category CRUD + chặn xóa khi có children, non-admin tạo category → 403 (32 checks)
 - `test_chat_api.sh` — Chat realtime (curl + jq + `test/wsclient` C# probe, chạy trong nix-shell): conversations list/idempotent/chặn shop mình→400/unknown→404, message rỗng + >2000→400, non-participant→403, unread count + giảm khi đọc, **WebSocket realtime** đẩy tin 2 chiều (seller↔buyer) + WS token thiếu/sai→reject (27 checks)
-- `test_extra_api.sh` — Các chức năng còn lại (curl + jq, chạy trong nix-shell): category CRUD (tạo con/đổi tên/chặn xóa gốc có con/xóa con/404), non-admin tạo category→403, shop settings + slug conflict→400, **promotion Customer→Seller**: register → role Customer, mở shop → role Seller (sau refresh), shop vẫn Pending → admin approve → Approved; **guard sản phẩm theo trạng thái shop**: Pending/Banned không tạo (400) + Banned không sửa (400), Approved tạo được (200); **ban tạm thời** (`/ban`→Banned): sản phẩm ẩn khỏi public (detail→404, `products?shop=`→0, isActive=false) rồi `/unban`→Approved hiện lại; **ban vĩnh viễn** (`DELETE`): không đơn→xóa cứng, có đơn→xóa mềm status `Deleted` + ẩn sản phẩm + **giữ nguyên lịch sử đơn** (buyer vẫn xem được, tên sản phẩm giữ); admin user ban (bị ban→login 401)/unban/ban tự thân→400/unknown→404; order cancel→Cancelled + khôi phục stock về đúng số cũ; return flow (seller ship→buyer confirm→ReturnRequested→seller approve→Returned); product delete (seller role sau refresh→tạo→xóa→hết trong danh sách); refresh-token reuse→401 (58 checks)
+- `test_extra_api.sh` — Các chức năng còn lại (curl + jq, chạy trong nix-shell): category CRUD (tạo con/đổi tên/chặn xóa gốc có con/xóa con/404), non-admin tạo category→403, shop settings + slug conflict→400, **promotion Customer→Seller**: register → role Customer, mở shop → role Seller (sau refresh), shop vẫn Pending → admin approve → Approved; **guard sản phẩm theo trạng thái shop**: Pending/Banned không tạo (400) + Banned không sửa (400), Approved tạo được (200); **ban tạm thời** (`/ban`→Banned): sản phẩm ẩn khỏi public (detail→404, `products?shop=`→0, isActive=false) rồi `/unban`→Approved hiện lại; **ban vĩnh viễn** (`DELETE`): không đơn→xóa cứng, có đơn→xóa mềm status `Deleted` + ẩn sản phẩm + **giữ nguyên lịch sử đơn** (buyer vẫn xem được, tên sản phẩm giữ); admin user ban (bị ban→login 401)/unban/ban tự thân→400/unknown→404; order cancel→Cancelled + khôi phục stock về đúng số cũ; return flow (seller ship→buyer confirm→ReturnRequested→seller approve→Returned); product delete (seller role sau refresh→tạo→xóa→hết trong danh sách); refresh-token reuse→401; **upload ảnh sản phẩm** (POST `/uploads/image` jpg/png/svg: thiếu auth→401, ext lạ→400, trả URL tuyệt đối, GET file→200 + `X-Content-Type-Options: nosniff`, seller tạo sản phẩm gắn ảnh→buyer xem detail thấy ảnh, seller sửa đổi ảnh→buyer thấy ảnh mới) (66 checks)
 - `test_full_api.sh` — Smoke test end-to-end mọi vai trò (curl + jq, chạy trong nix-shell): auth (register/login/sai mật khẩu→401/me/refresh), browse công khai (categories/products/detail/featured/reviews/404), cart (add/update/delete), order (giỏ trống→400/tạo/lịch sử/xem), review trước khi nhận→403; seller: mở shop → tự nâng role Seller (sau refresh), tạo sản phẩm khi Pending→400, admin duyệt shop→Approved, tạo/sửa sản phẩm + dashboard doanh thu + mục sales; vòng đời buy→Shipped→khách xác nhận nhận hàng→Delivered→đánh giá (review trùng→400, seller không tự đặt Delivered→400); RBAC (customer chặn khỏi admin/seller, không token→401, không đổi status đơn, seller không duyệt shop). Trả exit code 0 nếu all pass (52 checks)
 
 ## Ghi chú kỹ thuật
