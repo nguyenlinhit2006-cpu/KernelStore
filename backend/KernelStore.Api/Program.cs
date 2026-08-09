@@ -98,7 +98,12 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Chỉ bật HTTPS redirect ngoài Development (dev chạy thuần HTTP trên :5000).
+// Nếu bật ở dev sẽ log warning "Failed to determine the https port for redirect".
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseCors("FrontendPolicy");
 

@@ -36,7 +36,30 @@ KernelStore/
 └── README.md
 ```
 
-## Chạy trên NixOS
+## Chạy nhanh (TL;DR)
+
+Cần **3 thành phần chạy cùng lúc**, đúng thứ tự: **Database → Backend → Frontend**. Thiếu backend là frontend sẽ báo `NetworkError when attempting to fetch resource` khi đăng ký/đăng nhập.
+
+```sh
+# Terminal 1 — Database (Postgres 16)
+docker compose up -d
+
+# Terminal 2 — Backend API  → http://localhost:5000
+nix-shell --run "dotnet run --project backend/KernelStore.Api --urls http://localhost:5000"
+
+# Terminal 3 — Frontend       → http://localhost:8080
+nix-shell --run "cd frontend && trunk serve --port 8080"
+```
+
+Mở trình duyệt tại **`http://localhost:8080`**. Đợi Terminal 2 in ra `Now listening on: http://localhost:5000` **trước khi** thao tác đăng ký/đăng nhập.
+
+> Seed dữ liệu mẫu (tuỳ chọn): dừng backend, chạy `./seed.sh`, rồi bật lại backend.
+
+Chi tiết từng bước + xử lý sự cố ở phần dưới.
+
+---
+
+## Chạy trên NixOS (chi tiết)
 
 Toàn bộ toolchain (dotnet 10, rust + wasm target, trunk, tailwind, docker-compose, postgresql client, jq, curl) đã khai báo trong `shell.nix` — **không cài gì global**, chỉ cần `nix-shell`.
 
@@ -122,6 +145,7 @@ nix-shell --run "cd frontend && trunk build"               # frontend → fronte
 
 ### Xử lý sự cố (NixOS)
 
+- **`NetworkError when attempting to fetch resource` khi đăng ký/đăng nhập** → **backend chưa chạy** (hoặc không nghe ở `http://localhost:5000`). Frontend gọi API tại `localhost:5000`; nếu không có gì lắng nghe, trình duyệt báo NetworkError. Bật Terminal 2 (`dotnet run ... --urls http://localhost:5000`) và đợi log `Now listening on: http://localhost:5000`. Kiểm tra nhanh: `curl http://localhost:5000/api/categories` phải trả JSON (không phải `Connection refused`).
 - **`linker 'cc' not found` khi build frontend** → bạn đang chạy `cargo`/`trunk` *ngoài* `nix-shell`. Vào `nix-shell` trước (stdenv cấp trình biên dịch C cho build-script proc-macro).
 - **`Cannot connect to the Docker daemon`** → chưa bật `virtualisation.docker.enable` hoặc chưa vào group `docker` (đăng xuất/đăng nhập lại).
 - **`wasm32-unknown-unknown` không có** → thoát và vào lại `nix-shell` (shellHook tự `rustup target add`), hoặc chạy tay `rustup target add wasm32-unknown-unknown`.

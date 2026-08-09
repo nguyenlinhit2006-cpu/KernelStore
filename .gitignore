@@ -1,0 +1,17 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Rust / Trunk / WASM build output
+frontend/target/
+frontend/dist/
+
+# Local Postgres data (khi chạy Postgres không dùng Docker)
+.pgdata/
+
+# Env / editor
+.env
+.env.local
+.vs/
+.idea/
+*.user
