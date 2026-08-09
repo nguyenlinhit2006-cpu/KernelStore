@@ -1,0 +1,163 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-tertiary: #1a1a1a;
+  --fg-primary: #00ff41;
+  --fg-secondary: #00d4aa;
+  --fg-muted: #6b7280;
+  --border: #1f2937;
+  --border-accent: #00ff41;
+  --error: #ff0040;
+  --warning: #ffaa00;
+  --info: #00ccff;
+}
+
+* {
+  border-radius: 0 !important;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--fg-primary);
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+::selection {
+  background: rgba(0, 255, 65, 0.3);
+}
+
+/* scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: #2f2f2f;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-primary);
+}
+
+/* typing caret blink */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.caret {
+  animation: blink 1s step-end infinite;
+}
+
+/* typewriter loading effect — reveals text char-by-char, looping, with a
+   blinking block caret. Width/steps are driven by inline --tw / --steps. */
+@keyframes typewriter {
+  0%   { width: 0; }
+  60%  { width: var(--tw); }
+  100% { width: var(--tw); }
+}
+@keyframes caret-blink {
+  0%, 49%   { border-color: currentColor; }
+  50%, 100% { border-color: transparent; }
+}
+.term-typing {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+  width: var(--tw, 10ch);
+  border-right: 0.55em solid currentColor;
+  animation:
+    typewriter 2.4s steps(var(--steps, 12), end) infinite,
+    caret-blink 0.8s step-end infinite;
+}
+
+/* terminal prompt text */
+.term-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+}
+.term-box:hover {
+  border-color: var(--fg-primary);
+}
+.term-row {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+}
+.term-sub {
+  background: var(--bg-primary);
+  border: 1px dashed var(--border);
+}
+.term-btn {
+  background: transparent;
+  color: var(--fg-primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.term-btn:hover {
+  background: rgba(0, 255, 65, 0.1);
+  border-color: var(--fg-primary);
+}
+.term-active {
+  background: var(--fg-primary);
+  color: var(--bg-primary);
+  border-color: var(--fg-primary);
+}
+.term-active:hover {
+  background: var(--fg-primary);
+  color: var(--bg-primary);
+}
+.term-menu-item {
+  background: transparent;
+  color: var(--fg-primary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+.term-menu-item:hover:not(.term-disabled) {
+  background: rgba(0, 255, 65, 0.1);
+  border-color: var(--border);
+}
+.term-menu-item.term-active {
+  background: var(--fg-primary);
+  color: var(--bg-primary);
+  border-color: var(--fg-primary);
+}
+.term-menu-item.term-disabled {
+  color: var(--fg-muted);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.term-input {
+  background: var(--bg-primary);
+  color: var(--fg-primary);
+  border: 1px solid var(--border);
+  outline: none;
+}
+.term-input:focus {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+}
+.term-input::placeholder {
+  color: var(--fg-muted);
+}
+.term-error {
+  color: var(--error);
+}
+.term-warn {
+  color: var(--warning);
+}
+.term-info {
+  color: var(--info);
+}
+.term-muted {
+  color: var(--fg-muted);
+}
