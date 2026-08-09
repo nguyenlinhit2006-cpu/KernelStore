@@ -134,7 +134,9 @@ public class OrdersController : ControllerBase
         }
         else if (shopId is Guid sid)
         {
-            query = query.Where(o => o.OrderDetails.Any(d => d.Product!.ShopId == sid));
+            // Seller thấy cả đơn mình đặt (người mua) lẫn đơn bán của shop mình.
+            query = query.Where(o => o.UserId == userId
+                || o.OrderDetails.Any(d => d.Product!.ShopId == sid));
         }
         else
         {
@@ -145,8 +147,70 @@ public class OrdersController : ControllerBase
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
 
-        var dtos = orders.Select(o => BuildDtoFromLoaded(o, shopId)).ToList();
+        // Đơn do chính user đặt → xem đầy đủ; đơn bán của shop → chỉ phần hàng của shop.
+        var dtos = orders
+            .Select(o => BuildDtoFromLoaded(o, o.UserId == userId ? null : shopId))
+            .ToList();
         return Ok(ApiResponse<List<OrderDto>>.Ok(dtos, "OK"));
+    }
+
+    // Danh sách đơn BÁN của shop (seller): chỉ đơn chứa sản phẩm của shop mình,
+    // hiển thị phần hàng thuộc shop. Lọc theo trạng thái nếu có.
+    [HttpGet("sales")]
+    [Authorize(Roles = "Seller,Admin")]
+    public async Task<IActionResult> Sales([FromQuery] string? status)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse.Fail("Không xác định được người dùng"));
+
+        var shop = await _db.Shops.FirstOrDefaultAsync(s => s.OwnerId == userId);
+        if (shop == null)
+            return NotFound(ApiResponse.Fail("Bạn chưa có shop"));
+
+        var sid = shop.Id;
+        var query = BaseQuery().Where(o => o.OrderDetails.Any(d => d.Product!.ShopId == sid));
+
+        if (!string.IsNullOrWhiteSpace(status)
+            && Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var st)
+            && Enum.IsDefined(st))
+        {
+            query = query.Where(o => o.Status == st);
+        }
+
+        var orders = await query
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+
+        var dtos = orders.Select(o => BuildDtoFromLoaded(o, sid)).ToList();
+        return Ok(ApiResponse<List<OrderDto>>.Ok(dtos, "OK"));
+    }
+
+    // Khách xác nhận đã nhận hàng: Shipped → Delivered. Chỉ chủ đơn thực hiện.
+    [HttpPost("{id:guid}/confirm-received")]
+    public async Task<IActionResult> ConfirmReceived(Guid id)
+    {
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse.Fail("Không xác định được người dùng"));
+
+        var order = await BaseQuery().FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null)
+            return NotFound(ApiResponse.Fail("Không tìm thấy đơn hàng"));
+
+        if (order.UserId != userId)
+            return StatusCode(StatusCodes.Status403Forbidden,
+                ApiResponse.Fail("Bạn không có quyền xác nhận đơn hàng này"));
+
+        if (order.Status == OrderStatus.Delivered)
+            return BadRequest(ApiResponse.Fail("Đơn đã được xác nhận nhận hàng"));
+        if (order.Status != OrderStatus.Shipped)
+            return BadRequest(ApiResponse.Fail("Chỉ xác nhận được khi đơn đã giao (Shipped)"));
+
+        order.Status = OrderStatus.Delivered;
+        order.PaidAt ??= DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        var dto = BuildDtoFromLoaded(order, null);
+        return Ok(ApiResponse<OrderDto>.Ok(dto, "Đã xác nhận nhận hàng"));
     }
 
     [HttpGet("{id:guid}")]
@@ -217,6 +281,11 @@ public class OrdersController : ControllerBase
         if (order.Status is OrderStatus.Delivered or OrderStatus.Cancelled)
             return BadRequest(ApiResponse.Fail(
                 $"Đơn đã ở trạng thái '{order.Status}', không thể thay đổi"));
+
+        // 'Delivered' là hành động xác nhận nhận hàng của khách; seller tối đa 'Shipped'.
+        if (!isAdmin && newStatus == OrderStatus.Delivered)
+            return BadRequest(ApiResponse.Fail(
+                "Trạng thái 'Delivered' do khách xác nhận khi nhận hàng"));
 
         order.Status = newStatus;
         await _db.SaveChangesAsync();

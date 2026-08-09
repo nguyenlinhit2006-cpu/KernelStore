@@ -2,15 +2,18 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 use leptos_router::hooks::use_params_map;
 
-use crate::api::{create_review, get_order, list_orders, update_order_status, ApiError, Order};
+use crate::api::{
+    confirm_received, create_review, get_order, list_orders, update_order_status, ApiError, Order,
+};
 use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
 
-/// Order statuses a seller/admin can transition an order to.
+/// Order statuses a seller can transition an order to. "Delivered" is intentionally
+/// excluded — only the buyer sets it, by confirming receipt.
 const ORDER_STATUSES: &[&str] = &[
-    "Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled",
+    "Pending", "Confirmed", "Processing", "Shipped", "Cancelled",
 ];
 
 /// Terminal color class for an order status.
@@ -173,16 +176,66 @@ pub fn OrderDetailPage() -> impl IntoView {
                 let role = auth.user.get().map(|u| u.role).unwrap_or_default();
                 // Seller/Admin can manage the order status.
                 let can_manage = role == "Seller" || role == "Admin";
-                // Customers can review products once the order is delivered.
+                // Customers can review products once they've confirmed receipt (Delivered).
                 let can_review = role == "Customer" && o.status == "Delivered";
+                // Buyer confirms receipt once the order has shipped.
+                let can_confirm = role == "Customer" && o.status == "Shipped";
 
                 view! {
                     <OrderDetailView order=o can_review=can_review/>
+                    <Show when=move || can_confirm>
+                        <ConfirmReceipt order_signal=order/>
+                    </Show>
                     <Show when=move || can_manage>
                         <StatusManager order_signal=order/>
                     </Show>
                 }.into_any()
             }}
+        </div>
+    }
+}
+
+/// Buyer-facing "I received the order" confirmation. Advances Shipped → Delivered,
+/// which unlocks product reviews.
+#[component]
+fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let busy = RwSignal::new(false);
+
+    let confirm = move |_| {
+        if busy.get() {
+            return;
+        }
+        let Some(o) = order_signal.get() else { return };
+        busy.set(true);
+        let token = auth.token.get().unwrap_or_default();
+        let id = o.id.clone();
+        spawn_local(async move {
+            match confirm_received(&token, &id).await {
+                Ok(updated) => {
+                    toasts.success("đã xác nhận nhận hàng — bạn có thể đánh giá sản phẩm");
+                    order_signal.set(Some(updated));
+                }
+                Err(e) => toasts.error(e.to_string()),
+            }
+            busy.set(false);
+        });
+    };
+
+    view! {
+        <div class="term-box p-4 mt-4">
+            <p class="term-muted text-xs mb-2"># nhận hàng</p>
+            <p class="text-sm mb-3">
+                "Đơn đã được giao tới bạn? Xác nhận để hoàn tất đơn và mở đánh giá sản phẩm."
+            </p>
+            <button
+                class="term-btn px-4 py-1.5 text-sm"
+                disabled=move || busy.get()
+                on:click=confirm
+            >
+                {move || if busy.get() { "đang xác nhận..." } else { "$ đã nhận hàng ✓" }}
+            </button>
         </div>
     }
 }

@@ -56,6 +56,27 @@ impl AuthContext {
         self.save_tokens(&access_token, &refresh_token);
     }
 
+    fn stored_refresh_token(&self) -> Option<String> {
+        window()
+            .and_then(|w| w.local_storage().ok().flatten())
+            .and_then(|s| s.get_item(REFRESH_KEY).ok().flatten())
+    }
+
+    /// Re-issue the access token from the stored refresh token so it picks up a
+    /// role change (e.g. Customer → Seller after opening a shop).
+    pub async fn refresh_session(&self) -> Result<(), String> {
+        let Some(refresh) = self.stored_refresh_token() else {
+            return Err("no refresh token".to_string());
+        };
+        match crate::api::refresh(&refresh).await {
+            Ok(auth) => {
+                self.set_auth(auth);
+                Ok(())
+            }
+            Err(e) => Err(e.to_string()),
+        }
+    }
+
     pub fn logout(&self) {
         self.token.set(None);
         self.user.set(None);

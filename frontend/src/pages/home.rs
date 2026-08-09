@@ -129,8 +129,10 @@ fn FeaturedCard(product: ProductCard) -> impl IntoView {
     let image = product.primary_image().unwrap_or_else(|| "/placeholder.svg".to_string());
     let price = product.sale_price.unwrap_or(product.price);
     let has_sale = product.sale_price.is_some();
+    let href = format!("/products/{}", product.slug);
 
     view! {
+        <a href=href class="block h-full">
         <article class="term-card group hover:border-[var(--accent)]/50 transition-all duration-300 flex flex-col h-full">
             <div class="relative aspect-square overflow-hidden rounded-t-lg bg-[var(--bg-tertiary)]">
                 <img
@@ -173,6 +175,7 @@ fn FeaturedCard(product: ProductCard) -> impl IntoView {
                 </div>
             </div>
         </article>
+        </a>
     }
 }
 

@@ -58,6 +58,19 @@ public class ShopsController : ControllerBase
         _db.Shops.Add(shop);
         await _db.SaveChangesAsync();
 
+        // Mở shop = trở thành seller: nâng role Customer → Seller.
+        // (Token hiện tại vẫn mang role cũ; client cần refresh/đăng nhập lại để nhận role mới.)
+        if (user.Role == UserRole.Customer)
+        {
+            user.Role = UserRole.Seller;
+            await _userManager.UpdateAsync(user);
+
+            if (!await _userManager.IsInRoleAsync(user, UserRole.Seller.ToString()))
+                await _userManager.AddToRoleAsync(user, UserRole.Seller.ToString());
+            if (await _userManager.IsInRoleAsync(user, UserRole.Customer.ToString()))
+                await _userManager.RemoveFromRoleAsync(user, UserRole.Customer.ToString());
+        }
+
         var dto = ToDto(shop, user.UserName ?? string.Empty);
         return Ok(ApiResponse<ShopDto>.Ok(dto, "Đã gửi yêu cầu mở shop. Chờ admin duyệt."));
     }

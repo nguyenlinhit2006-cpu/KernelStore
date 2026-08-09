@@ -110,6 +110,36 @@ pub async fn login(payload: &LoginPayload) -> Result<AuthData, ApiError> {
     envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RefreshPayload {
+    pub refresh_token: String,
+}
+
+/// Exchange a refresh token for a fresh access token (picks up any role change).
+pub async fn refresh(refresh_token: &str) -> Result<AuthData, ApiError> {
+    let payload = RefreshPayload { refresh_token: refresh_token.to_string() };
+    let resp = Request::post(&format!("{API_BASE}/auth/refresh"))
+        .header("Content-Type", "application/json")
+        .body(serde_json::to_string(&payload).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+
+    let envelope: ApiEnvelope<AuthData> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct MeData {
     pub info: UserInfo,
@@ -276,6 +306,51 @@ pub async fn get_admin_dashboard(token: &str) -> Result<DashboardStats, ApiError
     }
 
     let envelope: ApiEnvelope<DashboardStats> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopProductStat {
+    pub product_id: String,
+    pub name: String,
+    pub quantity_sold: i32,
+    pub revenue: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SellerDashboard {
+    pub total_revenue: f64,
+    pub total_orders: i32,
+    pub pending_orders: i32,
+    pub items_sold: i32,
+    pub total_products: i32,
+    pub active_products: i32,
+    pub orders_by_status: Vec<OrderStatusCount>,
+    pub top_products: Vec<TopProductStat>,
+}
+
+pub async fn get_seller_dashboard(token: &str) -> Result<SellerDashboard, ApiError> {
+    let resp = Request::get(&format!("{API_BASE}/seller/dashboard"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+
+    let envelope: ApiEnvelope<SellerDashboard> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
     if !envelope.success {
         let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
         return Err(ApiError::Server(msg));
@@ -969,6 +1044,35 @@ pub async fn list_orders(token: &str) -> Result<Vec<Order>, ApiError> {
     envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
 }
 
+/// Đơn BÁN của shop (seller). `status` rỗng = tất cả trạng thái.
+pub async fn list_seller_sales(token: &str, status: &str) -> Result<Vec<Order>, ApiError> {
+    let url = if status.is_empty() {
+        format!("{API_BASE}/orders/sales")
+    } else {
+        format!("{API_BASE}/orders/sales?status={status}")
+    };
+    let resp = Request::get(&url)
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+
+    let envelope: ApiEnvelope<Vec<Order>> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
 pub async fn get_order(token: &str, id: &str) -> Result<Order, ApiError> {
     let resp = Request::get(&format!("{API_BASE}/orders/{id}"))
         .header("Authorization", &format!("Bearer {token}"))
@@ -1002,6 +1106,30 @@ pub async fn update_order_status(token: &str, id: &str, status: &str) -> Result<
         .header("Authorization", &format!("Bearer {token}"))
         .body(serde_json::to_string(&Payload { status }).unwrap_or_default())
         .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+
+    let envelope: ApiEnvelope<Order> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Buyer confirms they received the order (Shipped → Delivered).
+pub async fn confirm_received(token: &str, id: &str) -> Result<Order, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}/orders/{id}/confirm-received"))
+        .header("Authorization", &format!("Bearer {token}"))
         .send()
         .await
         .map_err(|e| ApiError::Network(e.to_string()))?;

@@ -57,14 +57,14 @@ public class ReviewsController : ControllerBase
         if (product == null)
             return NotFound(ApiResponse.Fail("Không tìm thấy sản phẩm"));
 
-        // Chỉ cho đánh giá khi đã mua (có đơn không bị hủy chứa sản phẩm này)
-        var purchased = await _db.OrderDetails.AnyAsync(d =>
+        // Chỉ cho đánh giá khi đã nhận hàng (đơn ở trạng thái Delivered do khách xác nhận)
+        var received = await _db.OrderDetails.AnyAsync(d =>
             d.ProductId == request.ProductId &&
             d.Order!.UserId == userId &&
-            d.Order.Status != OrderStatus.Cancelled);
-        if (!purchased)
+            d.Order.Status == OrderStatus.Delivered);
+        if (!received)
             return StatusCode(StatusCodes.Status403Forbidden,
-                ApiResponse.Fail("Bạn cần mua sản phẩm này trước khi đánh giá"));
+                ApiResponse.Fail("Bạn cần xác nhận đã nhận hàng trước khi đánh giá"));
 
         // Mỗi user chỉ đánh giá 1 lần cho mỗi sản phẩm
         if (await _db.Reviews.AnyAsync(r => r.ProductId == request.ProductId && r.UserId == userId))

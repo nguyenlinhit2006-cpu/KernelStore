@@ -3,9 +3,9 @@ use leptos::task::spawn_local;
 use std::rc::Rc;
 
 use crate::api::{
-    create_product, create_shop, delete_product, get_my_shop, list_categories, list_my_products,
-    update_product, update_shop, CategoryNode, CreateShopPayload, ProductInfo, ProductPayload,
-    ShopInfo,
+    create_product, create_shop, delete_product, get_my_shop, get_seller_dashboard,
+    list_categories, list_my_products, list_seller_sales, update_product, update_shop, CategoryNode,
+    CreateShopPayload, Order, ProductInfo, ProductPayload, SellerDashboard, ShopInfo,
 };
 use crate::auth::AuthContext;
 use crate::components::input::TermInput;
@@ -104,7 +104,7 @@ pub fn SellerPage() -> impl IntoView {
 #[component]
 fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
     let approved = shop.status == "Approved";
-    let items = vec!["dashboard", "products", "settings"];
+    let items = vec!["dashboard", "sales", "products", "settings"];
 
     view! {
         <aside class="term-box p-3 w-full sm:w-44 shrink-0">
@@ -116,7 +116,7 @@ fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
                     let label_active_cls = label.clone();
                     let label_active_txt = label.clone();
                     let label_click = label.clone();
-                    let enabled = label != "products" || approved;
+                    let enabled = (label != "products" && label != "sales") || approved;
                     view! {
                         <button
                             class="term-menu-item px-2 py-1.5 text-sm text-left"
@@ -167,12 +167,245 @@ fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: R
                             </div>
                         }.into_any()
                     }
+                } else if s == "sales" {
+                    let current = shop.get().clone().unwrap();
+                    if current.status == "Approved" {
+                        view! { <SalesManager auth=auth/> }.into_any()
+                    } else {
+                        view! {
+                            <div class="term-box p-5">
+                                <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa có đơn bán."</p>
+                            </div>
+                        }.into_any()
+                    }
                 } else {
                     let current = shop.get().clone().unwrap();
-                    view! { <ShopStatus shop=current/> }.into_any()
+                    view! {
+                        <RevenueDashboard/>
+                        <ShopStatus shop=current/>
+                    }.into_any()
                 }
             }}
         </div>
+    }
+}
+
+/// ASCII bar for a value out of `max`, `width` chars wide.
+fn meter(value: i32, max: i32, width: usize) -> String {
+    let filled = if max <= 0 {
+        0
+    } else {
+        ((value as f64 / max as f64) * width as f64).round() as usize
+    }
+    .min(width);
+    format!("[{}{}]", "#".repeat(filled), " ".repeat(width - filled))
+}
+
+#[component]
+fn StatCard(label: &'static str, value: String) -> impl IntoView {
+    view! {
+        <div class="term-box p-3">
+            <p class="term-muted text-xs">{label}</p>
+            <p class="text-xl font-bold text-[var(--fg-primary)]">{value}</p>
+        </div>
+    }
+}
+
+/// Revenue + order statistics scoped to the seller's own shop.
+#[component]
+fn RevenueDashboard() -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+
+    let stats = RwSignal::new(None::<SellerDashboard>);
+    let loading = RwSignal::new(true);
+    let error = RwSignal::new(String::new());
+
+    {
+        let token = auth.token.get().unwrap_or_default();
+        spawn_local(async move {
+            match get_seller_dashboard(&token).await {
+                Ok(s) => stats.set(Some(s)),
+                Err(e) => error.set(e.to_string()),
+            }
+            loading.set(false);
+        });
+    }
+
+    view! {
+        <div class="mb-4">
+            <Show when=move || !error.get().is_empty()>
+                <p class="term-error text-sm mb-3">"[ERROR] " {move || error.get()}</p>
+            </Show>
+
+            {move || {
+                if loading.get() {
+                    return view! { <p><Loading text="loading stats"/></p> }.into_any();
+                }
+                let Some(s) = stats.get() else {
+                    return view! { <span></span> }.into_any();
+                };
+
+                let max_order = s.orders_by_status.iter().map(|o| o.count).max().unwrap_or(0);
+                let top = s.top_products.clone();
+
+                view! {
+                    // ── revenue headline ─────────────────────────────────
+                    <div class="term-box p-4 mb-4">
+                        <p class="term-muted text-xs mb-1"># doanh thu (đơn chưa hủy)</p>
+                        <p class="text-2xl font-bold text-[var(--fg-primary)]">
+                            {format!("${:.2}", s.total_revenue)}
+                        </p>
+                    </div>
+
+                    // ── stat cards ───────────────────────────────────────
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                        <StatCard label="orders" value=s.total_orders.to_string()/>
+                        <StatCard label="pending" value=s.pending_orders.to_string()/>
+                        <StatCard label="items sold" value=s.items_sold.to_string()/>
+                        <StatCard label="products" value=format!("{}/{}", s.active_products, s.total_products)/>
+                    </div>
+
+                    // ── orders by status ─────────────────────────────────
+                    <div class="term-box p-4 mb-4 font-mono text-sm overflow-x-auto">
+                        <p class="term-muted text-xs mb-3"># orders by status</p>
+                        {s.orders_by_status.into_iter().map(|o| {
+                            let label = format!("{:<10}", o.status);
+                            view! {
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="term-muted w-24">{label}</span>
+                                    <span class="term-info">{meter(o.count, max_order, 16)}</span>
+                                    <span class="term-muted w-8 text-right">{o.count}</span>
+                                </div>
+                            }
+                        }).collect_view()}
+                    </div>
+
+                    // ── top products ─────────────────────────────────────
+                    <div class="term-box p-4 mb-4">
+                        <p class="term-muted text-xs mb-3"># top products (by revenue)</p>
+                        {if top.is_empty() {
+                            view! { <p class="term-muted text-sm">"// chưa có đơn hàng nào"</p> }.into_any()
+                        } else {
+                            view! {
+                                <div class="flex flex-col gap-1">
+                                    {top.into_iter().enumerate().map(|(i, p)| {
+                                        view! {
+                                            <div class="flex items-center justify-between gap-3 text-sm border-b border-[var(--border)] last:border-0 py-1">
+                                                <span class="min-w-0 truncate">
+                                                    <span class="term-muted">{format!("{}. ", i + 1)}</span>
+                                                    {p.name}
+                                                    <span class="term-muted text-xs">{format!(" ×{}", p.quantity_sold)}</span>
+                                                </span>
+                                                <span class="shrink-0 text-[var(--fg-primary)]">{format!("${:.2}", p.revenue)}</span>
+                                            </div>
+                                        }
+                                    }).collect_view()}
+                                </div>
+                            }.into_any()
+                        }}
+                    </div>
+                }.into_any()
+            }}
+        </div>
+    }
+}
+
+/// Status options for the sales filter; "" means all statuses.
+const SALES_STATUSES: &[&str] = &[
+    "", "Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled",
+];
+
+/// Terminal color class for an order status.
+fn sales_status_class(status: &str) -> &'static str {
+    match status {
+        "Delivered" => "term-info",
+        "Cancelled" => "term-error",
+        "Shipped" | "Processing" | "Confirmed" => "term-warn",
+        _ => "term-muted", // Pending
+    }
+}
+
+/// Incoming orders for the seller's shop, with a status filter. Each row links to
+/// the shared order detail page where the seller can advance the order status.
+#[component]
+fn SalesManager(auth: AuthContext) -> impl IntoView {
+    let orders = RwSignal::new(Vec::<Order>::new());
+    let loading = RwSignal::new(true);
+    let error = RwSignal::new(String::new());
+    let filter = RwSignal::new(String::new());
+
+    Effect::new(move |_| {
+        let status = filter.get();
+        let token = auth.token.get().unwrap_or_default();
+        loading.set(true);
+        error.set(String::new());
+        spawn_local(async move {
+            match list_seller_sales(&token, &status).await {
+                Ok(list) => orders.set(list),
+                Err(e) => error.set(e.to_string()),
+            }
+            loading.set(false);
+        });
+    });
+
+    view! {
+        <div class="term-box p-5">
+            <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
+                <h3 class="font-bold text-[var(--fg-primary)]">"> sales"</h3>
+                <select
+                    class="term-input px-3 py-1.5 text-sm"
+                    on:change=move |ev| filter.set(event_target_value(&ev))
+                >
+                    {SALES_STATUSES.iter().map(|s| {
+                        let label = if s.is_empty() { "all statuses" } else { *s };
+                        view! { <option value=*s>{label}</option> }
+                    }).collect_view()}
+                </select>
+            </div>
+
+            <p class="term-error text-sm mb-2" class:invisible=move || error.get().is_empty()>
+                "[ERROR] " {move || error.get()}
+            </p>
+
+            {move || {
+                if loading.get() {
+                    return view! { <p><Loading text="loading sales"/></p> }.into_any();
+                }
+                let list = orders.get();
+                if list.is_empty() {
+                    return view! {
+                        <p class="term-muted text-sm">"// chưa có đơn bán nào"</p>
+                    }.into_any();
+                }
+                view! {
+                    <div class="flex flex-col gap-2">
+                        {list.into_iter().map(|o| view! { <SalesRow order=o/> }).collect_view()}
+                    </div>
+                }.into_any()
+            }}
+        </div>
+    }
+}
+
+#[component]
+fn SalesRow(order: Order) -> impl IntoView {
+    let href = format!("/orders/{}", order.id);
+    let sclass = sales_status_class(&order.status);
+    let date: String = order.created_at.chars().take(10).collect();
+    view! {
+        <a href=href class="term-row block p-3">
+            <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                    <span class="text-[var(--fg-primary)] text-sm font-bold">{order.order_code}</span>
+                    <span class="term-muted text-xs ml-2">{date}</span>
+                </div>
+                <span class=format!("text-xs {sclass}")>{order.status}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3 mt-1 text-xs term-muted">
+                <span>{format!("{} item(s)", order.item_count)}</span>
+                <span class="text-[var(--fg-primary)]">{format!("${:.2}", order.total_amount)}</span>
+            </div>
+        </a>
     }
 }
 
@@ -318,7 +551,12 @@ fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> 
         submitting.set(true);
         spawn_local(async move {
             match create_shop(&token, &payload).await {
-                Ok(shop) => on_created.set(Some(shop)),
+                Ok(shop) => {
+                    // Opening a shop promotes the user to Seller server-side; refresh
+                    // the token so the new role takes effect without a manual re-login.
+                    let _ = auth.refresh_session().await;
+                    on_created.set(Some(shop));
+                }
                 Err(e) => error.set(e.to_string()),
             }
             submitting.set(false);
