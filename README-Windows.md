@@ -143,6 +143,7 @@ cd frontend; trunk build                  # frontend → frontend\dist\
 
 ## Xử lý sự cố (Windows)
 
+- **`NetworkError when attempting to fetch resource` khi đăng ký/đăng nhập** → **backend chưa chạy** (hoặc không nghe ở `http://localhost:5000`). Frontend gọi API tại `localhost:5000`; nếu không có gì lắng nghe, trình duyệt báo NetworkError. Mở lại PowerShell ở **mục 2** (`dotnet run ... --urls http://localhost:5000`) và đợi log `Now listening on: http://localhost:5000`. Kiểm tra nhanh trong PowerShell: `curl http://localhost:5000/api/categories` phải trả JSON (không phải lỗi kết nối).
 - **`link.exe`/`cc` không tìm thấy khi build frontend** → thiếu C++ Build Tools. Cài Visual Studio Build Tools + workload "Desktop development with C++" (xem mục 0).
 - **`dotnet`/`trunk`/`cargo` không nhận lệnh** → chưa mở lại terminal sau khi cài, hoặc chưa có trong PATH. Đóng/mở lại PowerShell.
 - **`error: target 'wasm32-unknown-unknown' not found`** → chạy `rustup target add wasm32-unknown-unknown`.
