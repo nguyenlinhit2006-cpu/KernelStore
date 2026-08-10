@@ -21,6 +21,7 @@ pkgs.mkShell {
     tailwindcss
 
     # Tooling
+    gcc          # C linker (cc) cho Rust build-scripts / proc-macros
     pkg-config
     openssl
     docker

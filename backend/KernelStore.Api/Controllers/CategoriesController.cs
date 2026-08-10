@@ -22,7 +22,10 @@ public class CategoriesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
+        // Public catalog shows only global categories (Admin-managed).
+        // Per-shop categories (OwnerShopId != null) are managed by their seller.
         var all = await _db.Categories
+            .Where(c => c.OwnerShopId == null)
             .Include(c => c.Products)
             .OrderBy(c => c.Name)
             .ToListAsync();

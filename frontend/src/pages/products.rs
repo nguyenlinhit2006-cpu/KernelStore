@@ -1,4 +1,5 @@
 use leptos::prelude::*;
+use leptos::task::spawn_local;
 use leptos_router::hooks::{use_navigate, use_query_map};
 
 use crate::api::{list_categories, list_products, CategoryNode, ProductCard, ProductQuery};
@@ -81,6 +82,39 @@ pub fn ProductsPage() -> impl IntoView {
             .any(|k| q.get(k).is_some_and(|v| !v.is_empty()))
     };
 
+    // ── Live search suggestions (type ≥2 chars → dropdown of matches) ──────
+    let suggestions = RwSignal::new(Vec::<ProductCard>::new());
+    let sugg_open = RwSignal::new(false);
+    let nav_sugg = use_navigate();
+
+    let fetch_suggestions = move |term: String| {
+        if term.trim().len() < 2 {
+            suggestions.set(Vec::new());
+            sugg_open.set(false);
+            return;
+        }
+        spawn_local(async move {
+            let pq = ProductQuery {
+                category: None,
+                shop: None,
+                min_price: None,
+                max_price: None,
+                search: Some(term.clone()),
+                sort: None,
+                page: 1,
+                page_size: 6,
+            };
+            if let Ok(res) = list_products(&pq).await {
+                // Only apply if the input still holds the same term (avoid stale results).
+                if search.get_untracked() == term {
+                    let empty = res.items.is_empty();
+                    suggestions.set(res.items);
+                    sugg_open.set(!empty);
+                }
+            }
+        });
+    };
+
     view! {
         <div class="p-6 max-w-7xl mx-auto">
             <div class="mb-6">
@@ -104,17 +138,55 @@ pub fn ProductsPage() -> impl IntoView {
                         <label class="block text-xs term-muted mb-1">"search"</label>
                         <div class="flex items-center gap-2 mb-3">
                             <span class="term-info text-sm shrink-0">">"</span>
-                            <input
-                                class="term-input w-full px-2 py-1 text-sm"
-                                placeholder="grep name..."
-                                prop:value=move || search.get()
-                                on:input=move |ev| search.set(event_target_value(&ev))
-                                on:keydown=move |ev| {
-                                    if ev.key() == "Enter" {
-                                        submit_filters();
+                            <div class="relative w-full">
+                                <input
+                                    class="term-input w-full px-2 py-1 text-sm"
+                                    placeholder="grep name..."
+                                    prop:value=move || search.get()
+                                    on:input=move |ev| {
+                                        let v = event_target_value(&ev);
+                                        search.set(v.clone());
+                                        fetch_suggestions(v);
                                     }
-                                }
-                            />
+                                    on:focus=move |_| {
+                                        if !suggestions.get().is_empty() { sugg_open.set(true); }
+                                    }
+                                    on:blur=move |_| sugg_open.set(false)
+                                    on:keydown=move |ev| {
+                                        if ev.key() == "Enter" {
+                                            sugg_open.set(false);
+                                            submit_filters();
+                                        } else if ev.key() == "Escape" {
+                                            sugg_open.set(false);
+                                        }
+                                    }
+                                />
+                                {move || sugg_open.get().then(|| {
+                                    let items = suggestions.get();
+                                    view! {
+                                        <ul class="absolute z-30 left-0 right-0 mt-1 term-box p-1 max-h-72 overflow-y-auto shadow-lg">
+                                            {items.into_iter().map(|p| {
+                                                let slug = p.slug.clone();
+                                                let nav = nav_sugg.clone();
+                                                let price = p.sale_price.unwrap_or(p.price);
+                                                view! {
+                                                    <li
+                                                        class="term-menu-item px-2 py-1.5 text-sm cursor-pointer flex justify-between gap-2"
+                                                        on:mousedown=move |ev| {
+                                                            ev.prevent_default();
+                                                            sugg_open.set(false);
+                                                            nav(&format!("/products/{slug}"), Default::default());
+                                                        }
+                                                    >
+                                                        <span class="truncate">{p.name.clone()}</span>
+                                                        <span class="term-muted text-xs shrink-0">{format!("${price:.2}")}</span>
+                                                    </li>
+                                                }
+                                            }).collect_view()}
+                                        </ul>
+                                    }
+                                })}
+                            </div>
                         </div>
                         <label class="block text-xs term-muted mb-1">"price range"</label>
                         <div class="flex items-center gap-2 mb-3">

@@ -4,9 +4,10 @@ use leptos_router::hooks::use_query_map;
 use std::rc::Rc;
 
 use crate::api::{
-    create_product, create_shop, delete_product, get_my_shop, get_seller_dashboard,
-    list_categories, list_my_products, list_seller_sales, update_product, update_shop, CategoryNode,
-    CreateShopPayload, Order, ProductInfo, ProductPayload, SellerDashboard, ShopInfo,
+    create_my_category, create_product, create_shop, delete_my_category, delete_product,
+    get_my_shop, get_seller_dashboard, list_categories, list_my_categories, list_my_products,
+    list_seller_sales, update_my_category, update_product, update_shop, CategoryNode,
+    CategoryPayload, CreateShopPayload, Order, ProductInfo, ProductPayload, SellerDashboard, ShopInfo,
 };
 use crate::auth::AuthContext;
 use crate::components::input::TermInput;
@@ -79,7 +80,7 @@ pub fn SellerPage() -> impl IntoView {
     let query = use_query_map();
     Effect::new(move |_| {
         if let Some(tab) = query.get().get("tab") {
-            if ["dashboard", "sales", "products", "settings"].contains(&tab.as_str()) {
+            if ["dashboard", "sales", "products", "categories", "settings"].contains(&tab.as_str()) {
                 section.set(tab);
             }
         }
@@ -115,7 +116,7 @@ pub fn SellerPage() -> impl IntoView {
 #[component]
 fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
     let approved = shop.status == "Approved";
-    let items = vec!["dashboard", "sales", "products", "settings"];
+    let items = vec!["dashboard", "sales", "products", "categories", "settings"];
 
     view! {
         <aside class="term-box p-3 w-full sm:w-44 shrink-0">
@@ -127,7 +128,7 @@ fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
                     let label_active_cls = label.clone();
                     let label_active_txt = label.clone();
                     let label_click = label.clone();
-                    let enabled = (label != "products" && label != "sales") || approved;
+                    let enabled = (label != "products" && label != "sales" && label != "categories") || approved;
                     view! {
                         <button
                             class="term-menu-item px-2 py-1.5 text-sm text-left"
@@ -186,6 +187,17 @@ fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: R
                         view! {
                             <div class="term-box p-5">
                                 <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa có đơn bán."</p>
+                            </div>
+                        }.into_any()
+                    }
+                } else if s == "categories" {
+                    let current = shop.get().clone().unwrap();
+                    if current.status == "Approved" {
+                        view! { <SellerCategoryManager auth=auth/> }.into_any()
+                    } else {
+                        view! {
+                            <div class="term-box p-5">
+                                <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa thể quản lý danh mục."</p>
                             </div>
                         }.into_any()
                     }
@@ -615,12 +627,19 @@ fn ProductManager(auth: AuthContext) -> impl IntoView {
     let show_form = RwSignal::new(false);
     let categories = RwSignal::new(Vec::<(String, String)>::new());
 
+    let cat_token = auth.token.get_untracked().unwrap_or_default();
     spawn_local(async move {
+        let mut flat = Vec::new();
         if let Ok(tree) = list_categories().await {
-            let mut flat = Vec::new();
             flatten_categories(&tree, 0, &mut flat);
-            categories.set(flat);
         }
+        // Append this shop's own categories so they can be assigned to products.
+        if let Ok(mine) = list_my_categories(&cat_token).await {
+            for c in mine {
+                flat.push((c.id.clone(), format!("★ {}", c.name)));
+            }
+        }
+        categories.set(flat);
     });
 
     let load = move || {
@@ -1037,5 +1056,210 @@ fn ProductForm(
                 }}
             </button>
         </div>
+    }
+}
+
+/// Seller-scoped category management: create / edit / delete categories that
+/// belong to this seller's own shop (Category.OwnerShopId == shop.Id).
+#[component]
+fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
+    let cats = RwSignal::new(Vec::<CategoryNode>::new());
+    let loading = RwSignal::new(true);
+    let error = RwSignal::new(String::new());
+    let flash = RwSignal::new(String::new());
+    let refresh = RwSignal::new(());
+
+    let editing_id = RwSignal::new(None::<String>);
+    let name = RwSignal::new(String::new());
+    let slug = RwSignal::new(String::new());
+    let description = RwSignal::new(String::new());
+    let auto_slug = RwSignal::new(true);
+    let submitting = RwSignal::new(false);
+
+    Effect::new(move |_| {
+        refresh.get();
+        let token = auth.token.get().unwrap_or_default();
+        spawn_local(async move {
+            loading.set(true);
+            match list_my_categories(&token).await {
+                Ok(list) => cats.set(list),
+                Err(e) => error.set(e.to_string()),
+            }
+            loading.set(false);
+        });
+    });
+
+    let reset_form = move || {
+        editing_id.set(None);
+        name.set(String::new());
+        slug.set(String::new());
+        description.set(String::new());
+        auto_slug.set(true);
+    };
+
+    let start_edit = move |c: CategoryNode| {
+        editing_id.set(Some(c.id.clone()));
+        name.set(c.name.clone());
+        slug.set(c.slug.clone());
+        description.set(c.description.clone());
+        auto_slug.set(false);
+        flash.set(String::new());
+        error.set(String::new());
+    };
+
+    let submit = move |_| {
+        if submitting.get() {
+            return;
+        }
+        if name.get().trim().is_empty() || slug.get().trim().is_empty() {
+            error.set("name và slug là bắt buộc".to_string());
+            return;
+        }
+        submitting.set(true);
+        error.set(String::new());
+        let token = auth.token.get().unwrap_or_default();
+        let payload = CategoryPayload {
+            name: name.get().trim().to_string(),
+            slug: slug.get().trim().to_string(),
+            description: description.get().trim().to_string(),
+            parent_id: None,
+        };
+        let edit = editing_id.get();
+        spawn_local(async move {
+            let result = match &edit {
+                Some(id) => update_my_category(&token, id, &payload).await,
+                None => create_my_category(&token, &payload).await,
+            };
+            match result {
+                Ok(c) => {
+                    flash.set(format!(
+                        "{} '{}'",
+                        if edit.is_some() { "updated" } else { "created" },
+                        c.name
+                    ));
+                    reset_form();
+                    refresh.set(());
+                }
+                Err(e) => error.set(e.to_string()),
+            }
+            submitting.set(false);
+        });
+    };
+
+    let delete_cat = move |id: String, cname: String| {
+        let token = auth.token.get().unwrap_or_default();
+        error.set(String::new());
+        spawn_local(async move {
+            match delete_my_category(&token, &id).await {
+                Ok(_) => {
+                    flash.set(format!("deleted '{cname}'"));
+                    refresh.set(());
+                }
+                Err(e) => error.set(e.to_string()),
+            }
+        });
+    };
+
+    view! {
+        <h2 class="text-base font-bold mb-1">"# danh mục của shop"</h2>
+        <p class="term-muted text-xs mb-3">
+            "Danh mục riêng của shop bạn — dùng để gắn cho sản phẩm (không ảnh hưởng danh mục chung)."
+        </p>
+
+        <Show when=move || !flash.get().is_empty()>
+            <p class="term-info text-sm mb-2">"[OK] " {move || flash.get()}</p>
+        </Show>
+        <Show when=move || !error.get().is_empty()>
+            <p class="term-error text-sm mb-2">"[ERROR] " {move || error.get()}</p>
+        </Show>
+
+        <div class="term-box p-4 mb-6">
+            <p class="term-muted text-xs mb-3">
+                {move || if editing_id.get().is_some() { "# sửa danh mục" } else { "# danh mục mới" }}
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                    <label class="block mb-1 text-xs term-muted">"name"</label>
+                    <input
+                        class="term-input w-full px-3 py-2 text-sm"
+                        prop:value=move || name.get()
+                        on:input=move |ev| {
+                            let v = event_target_value(&ev);
+                            if auto_slug.get() { slug.set(slugify(&v)); }
+                            name.set(v);
+                        }
+                    />
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs term-muted">"slug"</label>
+                    <input
+                        class="term-input w-full px-3 py-2 text-sm"
+                        prop:value=move || slug.get()
+                        on:input=move |ev| { auto_slug.set(false); slug.set(event_target_value(&ev)); }
+                    />
+                </div>
+                <div>
+                    <label class="block mb-1 text-xs term-muted">"description"</label>
+                    <input
+                        class="term-input w-full px-3 py-2 text-sm"
+                        prop:value=move || description.get()
+                        on:input=move |ev| description.set(event_target_value(&ev))
+                    />
+                </div>
+            </div>
+            <div class="flex gap-2 mt-3">
+                <button class="term-btn px-4 py-1.5 text-sm" disabled=move || submitting.get() on:click=submit>
+                    {move || if submitting.get() {
+                        "saving...".to_string()
+                    } else if editing_id.get().is_some() {
+                        "$ update".to_string()
+                    } else {
+                        "$ create".to_string()
+                    }}
+                </button>
+                <Show when=move || editing_id.get().is_some()>
+                    <button class="term-btn px-4 py-1.5 text-sm" on:click=move |_| reset_form()>"cancel"</button>
+                </Show>
+            </div>
+        </div>
+
+        {move || {
+            if loading.get() {
+                return view! { <Loading text="loading"/> }.into_any();
+            }
+            let list = cats.get();
+            if list.is_empty() {
+                return view! {
+                    <p class="term-muted text-sm">"chưa có danh mục nào. tạo mới ở trên."</p>
+                }.into_any();
+            }
+            view! {
+                <div class="flex flex-col gap-2">
+                    {list.into_iter().map(|c| {
+                        let c_edit = c.clone();
+                        let start_edit = start_edit.clone();
+                        let delete_cat = delete_cat.clone();
+                        let id = c.id.clone();
+                        let cname = c.name.clone();
+                        view! {
+                            <div class="term-box p-3 flex justify-between items-center gap-2">
+                                <div class="min-w-0">
+                                    <p class="text-sm text-[var(--fg-primary)] truncate">{c.name.clone()}</p>
+                                    <p class="term-muted text-xs truncate">
+                                        {format!("slug: {} | {} sản phẩm", c.slug, c.product_count)}
+                                    </p>
+                                </div>
+                                <div class="flex gap-2 shrink-0">
+                                    <button class="term-btn px-2 py-1 text-xs"
+                                        on:click=move |_| start_edit(c_edit.clone())>"edit"</button>
+                                    <button class="term-btn px-2 py-1 text-xs term-error"
+                                        on:click=move |_| delete_cat(id.clone(), cname.clone())>"delete"</button>
+                                </div>
+                            </div>
+                        }
+                    }).collect_view()}
+                </div>
+            }.into_any()
+        }}
     }
 }

@@ -784,6 +784,70 @@ pub async fn list_categories() -> Result<Vec<CategoryNode>, ApiError> {
     envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
 }
 
+// ── Seller: manage categories owned by the seller's own shop ───────────────
+pub async fn list_my_categories(token: &str) -> Result<Vec<CategoryNode>, ApiError> {
+    let resp = Request::get(&format!("{API_BASE}/seller/categories"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    let envelope: ApiEnvelope<Vec<CategoryNode>> =
+        resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+pub async fn create_my_category(token: &str, payload: &CategoryPayload) -> Result<CategoryNode, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}/seller/categories"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(serde_json::to_string(payload).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    let envelope: ApiEnvelope<CategoryNode> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+pub async fn update_my_category(token: &str, id: &str, payload: &CategoryPayload) -> Result<CategoryNode, ApiError> {
+    let resp = Request::put(&format!("{API_BASE}/seller/categories/{id}"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(serde_json::to_string(payload).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    let envelope: ApiEnvelope<CategoryNode> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+pub async fn delete_my_category(token: &str, id: &str) -> Result<(), ApiError> {
+    let resp = Request::delete(&format!("{API_BASE}/seller/categories/{id}"))
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    let envelope: ApiEnvelope<serde_json::Value> = resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReviewInfo {

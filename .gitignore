@@ -19,3 +19,6 @@ frontend/dist/
 # Kate editor swap files
 *.kate-swp
 .*.kate-swp
+
+# LibreOffice lock files
+.~lock.*#

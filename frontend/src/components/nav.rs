@@ -33,6 +33,7 @@ fn menu_groups(role: &str) -> Vec<Group> {
             items: vec![
                 ("dashboard", "/seller?tab=dashboard"),
                 ("products", "/seller?tab=products"),
+                ("categories", "/seller?tab=categories"),
                 ("sales", "/seller?tab=sales"),
                 ("settings", "/seller?tab=settings"),
             ],

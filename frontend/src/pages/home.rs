@@ -1,10 +1,12 @@
 use leptos::prelude::*;
 
 use crate::api::{featured_products, ProductCard};
+use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 
 #[component]
 pub fn HomePage() -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let featured = LocalResource::new(|| async move { featured_products(8).await });
 
     view! {
@@ -114,9 +116,11 @@ pub fn HomePage() -> impl IntoView {
                         <a href="/products" class="term-btn px-8 py-3 text-base font-medium">
                             "Browse Kernels"
                         </a>
-                        <a href="/auth/register" class="term-btn px-8 py-3 text-base font-medium border border-[var(--border)] bg-transparent">
-                            "Create Free Account"
-                        </a>
+                        {move || auth.user.get().is_none().then(|| view! {
+                            <a href="/auth/register" class="term-btn px-8 py-3 text-base font-medium border border-[var(--border)] bg-transparent">
+                                "Create Free Account"
+                            </a>
+                        })}
                     </div>
                 </div>
             </section>
