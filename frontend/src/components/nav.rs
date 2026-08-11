@@ -2,11 +2,14 @@ use leptos::prelude::*;
 use leptos_router::hooks::use_location;
 
 use crate::auth::AuthContext;
+use crate::i18n::use_i18n;
 
-/// One clickable entry: visible label + target href.
+/// One clickable entry: i18n label key + target href. The label is a
+/// translation key resolved at render time so the menu re-localises live.
 type Item = (&'static str, &'static str);
 
-/// A labelled group of menu entries (e.g. "buyer", "seller").
+/// A labelled group of menu entries. `label` is an i18n key (e.g.
+/// "nav.group.buyer").
 struct Group {
     label: &'static str,
     items: Vec<Item>,
@@ -16,12 +19,12 @@ struct Group {
 /// groups so shopping (buyer) and shop-management (seller) never blur together.
 fn menu_groups(role: &str) -> Vec<Group> {
     let buyer = Group {
-        label: "buyer",
+        label: "nav.group.buyer",
         items: vec![
-            ("browse", "/products"),
-            ("cart", "/cart"),
-            ("orders", "/orders"),
-            ("chat", "/chat"),
+            ("nav.browse", "/products"),
+            ("nav.cart", "/cart"),
+            ("nav.orders", "/orders"),
+            ("nav.chat", "/chat"),
         ],
     };
 
@@ -29,22 +32,22 @@ fn menu_groups(role: &str) -> Vec<Group> {
 
     match role {
         "Seller" => groups.push(Group {
-            label: "seller",
+            label: "nav.group.seller",
             items: vec![
-                ("dashboard", "/seller?tab=dashboard"),
-                ("products", "/seller?tab=products"),
-                ("categories", "/seller?tab=categories"),
-                ("sales", "/seller?tab=sales"),
-                ("settings", "/seller?tab=settings"),
+                ("nav.dashboard", "/seller?tab=dashboard"),
+                ("nav.products", "/seller?tab=products"),
+                ("nav.categories", "/seller?tab=categories"),
+                ("nav.sales", "/seller?tab=sales"),
+                ("nav.settings", "/seller?tab=settings"),
             ],
         }),
         "Admin" => groups.push(Group {
-            label: "admin",
-            items: vec![("panel", "/admin")],
+            label: "nav.group.admin",
+            items: vec![("nav.panel", "/admin")],
         }),
         _ => groups.push(Group {
-            label: "seller",
-            items: vec![("become seller", "/seller")], // Customer: no shop yet
+            label: "nav.group.seller",
+            items: vec![("nav.become_seller", "/seller")], // Customer: no shop yet
         }),
     }
 
@@ -67,6 +70,7 @@ fn is_active(href: &str, path: &str, tab: &str) -> bool {
 #[component]
 pub fn NavMenu() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
     let location = use_location();
 
     move || {
@@ -83,7 +87,7 @@ pub fn NavMenu() -> impl IntoView {
 
             view! {
                 <nav class="border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-1.5 text-xs overflow-x-auto whitespace-nowrap">
-                    <a href="/" class=home_cls>"home"</a>
+                    <a href="/" class=home_cls>{i18n.t("nav.home")}</a>
 
                     {groups.into_iter().enumerate().map(|(gi, g)| {
                         let items = g.items.into_iter().map(|(label, href)| {
@@ -92,10 +96,10 @@ pub fn NavMenu() -> impl IntoView {
                             } else {
                                 "term-menu-item px-2 py-0.5 shrink-0"
                             };
-                            view! { <a href=href class=cls>{label}</a> }
+                            view! { <a href=href class=cls>{i18n.t(label)}</a> }
                         }).collect_view();
                         view! {
-                            <span class="term-muted shrink-0 ml-2">{format!("{}:", g.label)}</span>
+                            <span class="term-muted shrink-0 ml-2">{format!("{}:", i18n.t(g.label))}</span>
                             {items}
                             {(gi != last).then(|| view! {
                                 <span class="term-muted shrink-0 mx-1">"│"</span>

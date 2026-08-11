@@ -5,10 +5,12 @@ use crate::api::{delete_cart_item, get_cart, update_cart_item, Cart, CartItem};
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
+use crate::i18n::use_i18n;
 
 #[component]
 pub fn CartPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
 
     let cart = RwSignal::new(None::<Cart>);
     let loading = RwSignal::new(true);
@@ -61,7 +63,7 @@ pub fn CartPage() -> impl IntoView {
                 Ok(c) => {
                     cart.set(Some(c));
                     error.set(String::new());
-                    toasts.info("removed item from cart");
+                    toasts.info(i18n.t("cart.removed"));
                 }
                 Err(e) => {
                     error.set(e.to_string());
@@ -75,7 +77,7 @@ pub fn CartPage() -> impl IntoView {
     view! {
         <div class="max-w-4xl mx-auto p-6">
             <p class="term-muted text-sm mb-1">"$ kernelstore --cart"</p>
-            <h1 class="text-lg font-bold mb-4">"> shopping cart"</h1>
+            <h1 class="text-lg font-bold mb-4">{move || i18n.t("cart.title")}</h1>
 
             <Show when=move || !error.get().is_empty()>
                 <p class="term-error text-sm mb-3">"[ERROR] " {move || error.get()}</p>
@@ -84,20 +86,20 @@ pub fn CartPage() -> impl IntoView {
             {move || {
                 if loading.get() {
                     return view! {
-                        <p><Loading text="loading cart"/></p>
+                        <p><Loading text=i18n.t("cart.loading")/></p>
                     }.into_any();
                 }
 
                 let Some(c) = cart.get() else {
-                    return view! { <p class="term-error">"failed to load cart"</p> }.into_any();
+                    return view! { <p class="term-error">{i18n.t("cart.load_failed")}</p> }.into_any();
                 };
 
                 if c.items.is_empty() {
                     return view! {
                         <div class="term-box p-8 text-center">
-                            <p class="term-muted text-sm mb-1">"// cart is empty"</p>
-                            <pre class="term-muted text-xs mb-4">"  (0 items) — nothing queued for checkout"</pre>
-                            <a href="/products" class="term-btn inline-block px-4 py-2 text-sm">"$ browse products →"</a>
+                            <p class="term-muted text-sm mb-1">{i18n.t("cart.empty")}</p>
+                            <pre class="term-muted text-xs mb-4">{i18n.t("cart.empty_hint")}</pre>
+                            <a href="/products" class="term-btn inline-block px-4 py-2 text-sm">{i18n.t("cart.browse")}</a>
                         </div>
                     }.into_any();
                 }
@@ -106,9 +108,9 @@ pub fn CartPage() -> impl IntoView {
                     <div class="term-box overflow-hidden">
                         // header row
                         <div class="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 text-xs term-muted border-b border-[var(--border)]">
-                            <span>"product"</span>
-                            <span class="text-center w-28">"qty"</span>
-                            <span class="text-right w-24">"total"</span>
+                            <span>{i18n.t("cart.col_product")}</span>
+                            <span class="text-center w-28">{i18n.t("cart.col_qty")}</span>
+                            <span class="text-right w-24">{i18n.t("cart.col_total")}</span>
                             <span class="w-8"></span>
                         </div>
 
@@ -123,17 +125,17 @@ pub fn CartPage() -> impl IntoView {
                     <div class="flex justify-end mt-4">
                         <div class="term-sub p-4 w-full sm:w-72">
                             <div class="flex justify-between text-sm mb-1">
-                                <span class="term-muted">"items:"</span>
+                                <span class="term-muted">{i18n.t("cart.items")}</span>
                                 <span>{c.total_items}</span>
                             </div>
                             <div class="flex justify-between text-sm mb-3">
-                                <span class="term-muted">"subtotal:"</span>
+                                <span class="term-muted">{i18n.t("cart.subtotal")}</span>
                                 <span class="text-[var(--fg-primary)] font-bold">{format!("${:.2}", c.subtotal)}</span>
                             </div>
                             <a
                                 href="/checkout"
                                 class="term-btn block text-center px-4 py-2 text-sm"
-                            >"$ checkout →"</a>
+                            >{i18n.t("cart.checkout")}</a>
                         </div>
                     </div>
                 }.into_any()
@@ -149,6 +151,7 @@ fn CartRow(
     set_qty: impl Fn(String, i32) + Copy + 'static,
     remove: impl Fn(String) + Copy + 'static,
 ) -> impl IntoView {
+    let i18n = use_i18n();
     let pid = item.product_id.clone();
     let qty = item.quantity;
     let stock = item.stock_quantity;
@@ -186,7 +189,7 @@ fn CartRow(
                         })}
                     </div>
                     {(qty >= stock).then(|| view! {
-                        <p class="term-warn text-xs mt-0.5">{format!("max stock: {stock}")}</p>
+                        <p class="term-warn text-xs mt-0.5">{format!("{}{stock}", i18n.t("cart.max_stock"))}</p>
                     })}
                 </div>
             </div>
@@ -212,7 +215,7 @@ fn CartRow(
             // remove
             <button
                 class="term-btn px-2 py-0.5 text-xs text-[var(--fg-error)] w-8"
-                title="remove"
+                title=i18n.t("cart.remove")
                 disabled=move || busy.get()
                 on:click=move |_| remove(rm_id.clone())
             >"x"</button>

@@ -14,6 +14,13 @@
   --error: #ff0040;
   --warning: #ffaa00;
   --info: #00ccff;
+
+  /* Aliases used across pages (home hero, cards, badges). Keep these in sync
+     with the base tokens above so components render with the intended theme. */
+  --bg: var(--bg-primary);
+  --accent: var(--fg-primary);
+  --accent-secondary: var(--fg-secondary);
+  --fg-error: var(--error);
 }
 
 * {
@@ -86,6 +93,20 @@ body {
 }
 .term-box:hover {
   border-color: var(--fg-primary);
+}
+
+/* product / feature card — dark panel that lights up on hover with a soft
+   neon glow, giving the catalog a premium terminal feel. */
+.term-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
+}
+.term-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(0, 255, 65, 0.25), 0 8px 30px rgba(0, 255, 65, 0.08);
+  transform: translateY(-2px);
 }
 .term-row {
   background: var(--bg-primary);

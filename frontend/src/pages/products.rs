@@ -4,12 +4,14 @@ use leptos_router::hooks::{use_navigate, use_query_map};
 
 use crate::api::{list_categories, list_products, CategoryNode, ProductCard, ProductQuery};
 use crate::components::loading::Loading;
+use crate::i18n::use_i18n;
 
 const PAGE_SIZE: u32 = 12;
 
 #[component]
 pub fn ProductsPage() -> impl IntoView {
     let query = use_query_map();
+    let i18n = use_i18n();
     let navigate = use_navigate();
 
     // Controlled inputs for the free-text filters; kept in sync with the URL.
@@ -134,8 +136,8 @@ pub fn ProductsPage() -> impl IntoView {
                 <aside class="lg:w-64 shrink-0 space-y-4">
                     // search + price
                     <div class="term-box p-3">
-                        <p class="text-xs term-info mb-2">"# filter"</p>
-                        <label class="block text-xs term-muted mb-1">"search"</label>
+                        <p class="text-xs term-info mb-2">{move || i18n.t("products.filter")}</p>
+                        <label class="block text-xs term-muted mb-1">{move || i18n.t("products.search")}</label>
                         <div class="flex items-center gap-2 mb-3">
                             <span class="term-info text-sm shrink-0">">"</span>
                             <div class="relative w-full">
@@ -188,7 +190,7 @@ pub fn ProductsPage() -> impl IntoView {
                                 })}
                             </div>
                         </div>
-                        <label class="block text-xs term-muted mb-1">"price range"</label>
+                        <label class="block text-xs term-muted mb-1">{move || i18n.t("products.price_range")}</label>
                         <div class="flex items-center gap-2 mb-3">
                             <input
                                 class="term-input w-full px-2 py-1 text-sm"
@@ -210,7 +212,7 @@ pub fn ProductsPage() -> impl IntoView {
                             class="term-btn w-full px-2 py-1 text-sm"
                             on:click=move |_| submit_filters()
                         >
-                            "apply filters"
+                            {move || i18n.t("products.apply_filters")}
                         </button>
                         <Show when=move || has_filters()>
                             <button
@@ -227,14 +229,14 @@ pub fn ProductsPage() -> impl IntoView {
                                     true,
                                 ))
                             >
-                                "clear all"
+                                {move || i18n.t("products.clear_all")}
                             </button>
                         </Show>
                     </div>
 
                     // sort
                     <div class="term-box p-3">
-                        <p class="text-xs term-info mb-2">"# sort"</p>
+                        <p class="text-xs term-info mb-2">{move || i18n.t("products.sort")}</p>
                         <select
                             class="term-input w-full px-2 py-1 text-sm"
                             prop:value=move || active_sort()
@@ -242,16 +244,16 @@ pub fn ProductsPage() -> impl IntoView {
                                 apply.run((vec![("sort", Some(event_target_value(&ev)))], true));
                             }
                         >
-                            <option value="">"newest"</option>
-                            <option value="price_asc">"price ↑"</option>
-                            <option value="price_desc">"price ↓"</option>
-                            <option value="name">"name a-z"</option>
+                            <option value="">{move || i18n.t("products.sort.newest")}</option>
+                            <option value="price_asc">{move || i18n.t("products.sort.price_asc")}</option>
+                            <option value="price_desc">{move || i18n.t("products.sort.price_desc")}</option>
+                            <option value="name">{move || i18n.t("products.sort.name")}</option>
                         </select>
                     </div>
 
                     // categories
                     <div class="term-box p-3">
-                        <p class="text-xs term-info mb-2">"# categories"</p>
+                        <p class="text-xs term-info mb-2">{move || i18n.t("products.categories")}</p>
                         <button
                             class=move || format!(
                                 "term-menu-item block w-full text-left px-2 py-1 text-sm {}",
@@ -259,16 +261,16 @@ pub fn ProductsPage() -> impl IntoView {
                             )
                             on:click=move |_| apply.run((vec![("category", None)], true))
                         >
-                            "all"
+                            {move || i18n.t("products.all")}
                         </button>
-                        <Suspense fallback=move || view! { <p class="term-muted text-xs px-2 py-1">"loading..."</p> }>
+                        <Suspense fallback=move || view! { <p class="term-muted text-xs px-2 py-1">{i18n.t("products.loading_dots")}</p> }>
                             {move || match categories.get().map(|c| c.take()) {
                                 None => view! { <span></span> }.into_any(),
                                 Some(Err(err)) => view! {
                                     <p class="term-error text-xs px-2 py-1">{err.to_string()}</p>
                                 }.into_any(),
                                 Some(Ok(cats)) if cats.is_empty() => view! {
-                                    <p class="term-muted text-xs px-2 py-1">"(none)"</p>
+                                    <p class="term-muted text-xs px-2 py-1">{i18n.t("products.cat_none")}</p>
                                 }.into_any(),
                                 Some(Ok(cats)) => view! {
                                     <div>
@@ -285,7 +287,7 @@ pub fn ProductsPage() -> impl IntoView {
                 // ── Product grid ────────────────────────────────────────────
                 <section class="flex-1 min-w-0">
                     <Show when=move || !active_shop().is_empty()>
-                        <p class="term-info text-xs mb-3">"filtered by shop: " {active_shop}</p>
+                        <p class="term-info text-xs mb-3">{move || i18n.t("products.filtered_shop")} {active_shop}</p>
                     </Show>
                     <Transition fallback=move || view! {
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -293,13 +295,13 @@ pub fn ProductsPage() -> impl IntoView {
                         </div>
                     }>
                         {move || match products.get().map(|p| p.take()) {
-                            None => view! { <p class="py-12 text-center"><Loading text="loading products"/></p> }.into_any(),
+                            None => view! { <p class="py-12 text-center"><Loading text=i18n.t("products.loading")/></p> }.into_any(),
                             Some(Err(err)) => view! {
-                                <p class="term-error py-12 text-center">"error: " {err.to_string()}</p>
+                                <p class="term-error py-12 text-center">{i18n.t("products.error")} {err.to_string()}</p>
                             }.into_any(),
                             Some(Ok(result)) if result.items.is_empty() => view! {
                                 <div class="term-box p-12 text-center">
-                                    <p class="term-muted">"$ ls: no products match your filters"</p>
+                                    <p class="term-muted">{i18n.t("products.no_match")}</p>
                                 </div>
                             }.into_any(),
                             Some(Ok(result)) => {
@@ -308,15 +310,15 @@ pub fn ProductsPage() -> impl IntoView {
                                 let total_pages = result.total_pages;
                                 view! {
                                     <div class="flex items-center justify-between mb-4 text-xs term-muted">
-                                        <span>{format!("{total} result(s)")}</span>
-                                        <span>{format!("page {page}/{}", total_pages.max(1))}</span>
+                                        <span>{format!("{total} {}", i18n.t("common.results"))}</span>
+                                        <span>{format!("{} {page}/{}", i18n.t("common.page"), total_pages.max(1))}</span>
                                     </div>
                                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                                         {result.items.into_iter().map(|product| view! {
                                             <ProductGridCard product=product/>
                                         }).collect_view()}
                                     </div>
-                                    <Pagination page=page total_pages=total_pages apply=apply/>
+                                    <Pagination page=page total_pages=total_pages/>
                                 }.into_any()
                             }
                         }}
@@ -370,44 +372,47 @@ fn CategoryItem(
 }
 
 #[component]
-fn Pagination(
-    page: i32,
-    total_pages: i32,
-    apply: Callback<(Vec<(&'static str, Option<String>)>, bool)>,
-) -> impl IntoView {
+fn Pagination(page: i32, total_pages: i32) -> impl IntoView {
     if total_pages <= 1 {
         return view! { <span></span> }.into_any();
     }
 
-    let go = move |target: i32| {
-        apply.run((vec![("page", Some(target.to_string()))], false));
+    let i18n = use_i18n();
+    let query = use_query_map();
+    // Build the URL for a target page by cloning the *current* query params and
+    // overriding `page`. Rendered as real <a> links so the router handles them
+    // exactly like the category/product links (reliable client-side nav).
+    let href_for = move |target: i32| {
+        let mut map = query.get_untracked();
+        map.replace("page", target.to_string());
+        format!("/products{}", map.to_query_string())
+    };
+
+    let prev = if page > 1 {
+        view! { <a href=href_for(page - 1) class="term-btn px-3 py-1 text-sm">{i18n.t("products.prev")}</a> }.into_any()
+    } else {
+        view! { <span class="term-btn term-disabled px-3 py-1 text-sm opacity-50">{i18n.t("products.prev")}</span> }.into_any()
+    };
+    let next = if page < total_pages {
+        view! { <a href=href_for(page + 1) class="term-btn px-3 py-1 text-sm">{i18n.t("products.next")}</a> }.into_any()
+    } else {
+        view! { <span class="term-btn term-disabled px-3 py-1 text-sm opacity-50">{i18n.t("products.next")}</span> }.into_any()
     };
 
     view! {
         <div class="flex items-center justify-center gap-2 mt-6">
-            <button
-                class="term-btn px-3 py-1 text-sm"
-                disabled=page <= 1
-                on:click=move |_| go(page - 1)
-            >
-                "< prev"
-            </button>
+            {prev}
             <span class="term-muted text-sm px-2">
                 {format!("{page} / {total_pages}")}
             </span>
-            <button
-                class="term-btn px-3 py-1 text-sm"
-                disabled=page >= total_pages
-                on:click=move |_| go(page + 1)
-            >
-                "next >"
-            </button>
+            {next}
         </div>
     }.into_any()
 }
 
 #[component]
 fn ProductGridCard(product: ProductCard) -> impl IntoView {
+    let i18n = use_i18n();
     let image = product.primary_image();
     let price = product.sale_price.unwrap_or(product.price);
     let has_sale = product.sale_price.is_some();
@@ -430,12 +435,12 @@ fn ProductGridCard(product: ProductCard) -> impl IntoView {
                     <span class="absolute top-2 left-2 px-2 py-0.5 text-xs term-active">"SALE"</span>
                 })}
                 {out_of_stock.then(|| view! {
-                    <span class="absolute top-2 right-2 px-2 py-0.5 text-xs term-warn border border-[var(--warning)]">"0 stock"</span>
+                    <span class="absolute top-2 right-2 px-2 py-0.5 text-xs term-warn border border-[var(--warning)]">{i18n.t("products.out_of_stock")}</span>
                 })}
             </div>
             <div class="p-3 flex flex-col flex-1">
                 <p class="text-xs term-info mb-1">
-                    {product.category_name.unwrap_or_else(|| "uncategorized".to_string())}
+                    {product.category_name.unwrap_or_else(|| i18n.t("products.uncategorized").to_string())}
                 </p>
                 <h3 class="text-sm text-[var(--fg-primary)] mb-1 line-clamp-1 group-hover:underline">
                     {product.name}
@@ -455,7 +460,7 @@ fn ProductGridCard(product: ProductCard) -> impl IntoView {
                         })}
                     </div>
                     <span class="text-xs term-muted truncate max-w-[8rem]">
-                        {product.shop_name.unwrap_or_else(|| "unknown".to_string())}
+                        {product.shop_name.unwrap_or_else(|| i18n.t("products.unknown_shop").to_string())}
                     </span>
                 </div>
             </div>

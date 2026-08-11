@@ -6,7 +6,7 @@ Sàn thương mại điện tử đa nhà cung cấp (Multi-vendor E-commerce Ma
 
 - **Frontend:** Rust + Leptos (CSR) + Trunk + Tailwind CSS — `http://localhost:8080`
 - **Backend:** ASP.NET Core 10 Web API + EF Core + PostgreSQL 16 — `http://localhost:5000`
-- **Database:** PostgreSQL 16 (Docker Compose) — `localhost:5432`
+- **Database:** PostgreSQL 16 (Docker Compose) — host `localhost:5433` → container `5432`
 
 ## Cấu trúc
 
@@ -111,7 +111,7 @@ nix-shell          # tải nixpkgs lần đầu hơi lâu; in ra version dotnet/
 ### 2. Database (PostgreSQL 16)
 
 ```sh
-docker compose up -d          # postgres:16 tại localhost:5432 (db/user/pass: kernelstore/admin/admin123)
+docker compose up -d          # postgres:16 tại localhost:5433 (db/user/pass: kernelstore/admin/admin123)
 docker compose ps             # kiểm tra healthy
 ```
 
@@ -130,7 +130,19 @@ dotnet run --project backend/KernelStore.Api --urls http://localhost:5000
 ./seed.sh                      # = dotnet run --project backend/KernelStore.Api seed
 ```
 
-Tạo 5 danh mục, 2 shop (Approved) + 8 sản phẩm. Idempotent — chạy lại sẽ báo `already present`.
+Tạo **10 danh mục, 7 shop (Approved) + 57 sản phẩm** (kèm ảnh minh hoạ). Idempotent — chạy lại sẽ bổ sung phần còn thiếu / báo `already present`.
+
+Ngoài nhóm điện tử cơ bản (laptop/phone/tablet/phụ kiện), catalog demo còn trải theo các chuyên ngành CNTT:
+
+| Chuyên ngành | Shop | Ví dụ sản phẩm |
+|---|---|---|
+| IoT & Embedded | IoT Depot | Raspberry Pi 5, ESP32, Arduino R4, LoRa Gateway, Zigbee Hub |
+| AI & Machine Learning | Neural Forge | RTX 4090, Jetson Orin, Google Coral, A100 80GB |
+| Cybersecurity | SecOps Armory | YubiKey 5, Flipper Zero, WiFi Pineapple, Proxmark3 |
+| SysAdmin & DevOps | OpsCenter | UniFi Dream Machine, 1U Server, Synology NAS, UPS rack |
+| Developer Tools | DevTools Hub | Keychron Q1, màn 4K, Stream Deck, license JetBrains/Copilot |
+
+> Ảnh sản phẩm nằm ở `backend/KernelStore.Api/wwwroot/uploads/` và phục vụ tại `http://localhost:5000/uploads/<slug>.jpg`. Trang chủ có mục **"Shop by specialization"** dẫn thẳng tới catalog đã lọc theo từng chuyên ngành.
 
 ### 5. Frontend (Leptos + Trunk)
 
@@ -158,8 +170,13 @@ Script tự: `docker compose up -d` → đợi Postgres healthy → chạy backe
 | Vai trò   | Email               | Mật khẩu       | Nguồn            |
 |-----------|---------------------|----------------|------------------|
 | Admin     | `admin@ks.com`      | `Admin@12345`  | seed tự động     |
-| Seller    | `seller1@demo.ks`   | `Seller@12345` | `./seed.sh`      |
-| Seller    | `seller2@demo.ks`   | `Seller@12345` | `./seed.sh`      |
+| Seller    | `seller1@demo.ks`   | `Seller@12345` | `./seed.sh` — TechWorld Store |
+| Seller    | `seller2@demo.ks`   | `Seller@12345` | `./seed.sh` — GadgetHub |
+| Seller    | `iot@demo.ks`       | `Seller@12345` | `./seed.sh` — IoT Depot |
+| Seller    | `ai@demo.ks`        | `Seller@12345` | `./seed.sh` — Neural Forge |
+| Seller    | `security@demo.ks`  | `Seller@12345` | `./seed.sh` — SecOps Armory |
+| Seller    | `sysadmin@demo.ks`  | `Seller@12345` | `./seed.sh` — OpsCenter |
+| Seller    | `developer@demo.ks` | `Seller@12345` | `./seed.sh` — DevTools Hub |
 | Customer  | tự đăng ký ở `/auth/register` | —    | —                |
 
 ### Chạy test (API còn sống trên :5000)
@@ -211,7 +228,7 @@ nix-shell --run "cd frontend && trunk build"               # frontend → fronte
 - **`linker 'cc' not found` khi build frontend** → bạn đang chạy `cargo`/`trunk` *ngoài* `nix-shell`. Vào `nix-shell` trước (stdenv cấp trình biên dịch C cho build-script proc-macro).
 - **`Cannot connect to the Docker daemon`** → chưa bật `virtualisation.docker.enable` hoặc chưa vào group `docker` (đăng xuất/đăng nhập lại).
 - **`wasm32-unknown-unknown` không có** → thoát và vào lại `nix-shell` (shellHook tự `rustup target add`), hoặc chạy tay `rustup target add wasm32-unknown-unknown`.
-- **Backend không nối được DB** → kiểm tra `docker compose ps` (postgres healthy) và connection string trong `backend/KernelStore.Api/appsettings.json` (`Host=localhost;Port=5432;...`).
+- **Backend không nối được DB** → kiểm tra `docker compose ps` (postgres healthy) và connection string trong `backend/KernelStore.Api/appsettings.json` (`Host=localhost;Port=5433;...`).
 - **CORS bị chặn** → frontend phải chạy đúng `http://localhost:8080` (khai báo trong `Cors:AllowedOrigins`).
 
 ### Postgres không dùng Docker
@@ -220,11 +237,13 @@ nix-shell --run "cd frontend && trunk build"               # frontend → fronte
 
 ```sh
 initdb -D .pgdata
-pg_ctl -D .pgdata -o "-p 5432" -l .pgdata/log start
-createuser -p 5432 -s admin
-psql -p 5432 -d postgres -c "ALTER USER admin PASSWORD 'admin123';"
-createdb -p 5432 -O admin kernelstore
+pg_ctl -D .pgdata -o "-p 5433" -l .pgdata/log start
+createuser -p 5433 -s admin
+psql -p 5433 -d postgres -c "ALTER USER admin PASSWORD 'admin123';"
+createdb -p 5433 -O admin kernelstore
 ```
+
+> Cổng `5433` khớp connection string trong `appsettings.json`. Nếu chạy Postgres cục bộ ở cổng khác thì sửa `Port=` trong `appsettings.json` cho khớp.
 
 ## API endpoints
 

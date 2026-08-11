@@ -512,6 +512,11 @@ COPY public."AspNetUserRoles" ("UserId", "RoleId") FROM stdin;
 019fed6c-b2b6-7c03-9166-314cacf776a4	019fec69-ee4c-700a-927c-b3744303fa7a
 019fed6c-b32b-7b05-b034-e2e3f61af42c	019fec69-ee4c-700a-927c-b3744303fa7a
 019fed6c-b3a5-7ae7-b66b-d46aea0484a6	019fec69-ee4c-700a-927c-b3744303fa7a
+019ffff0-0000-7000-8000-000000000001	019fec69-eed4-79f0-9ce4-676ef7cd27f4
+019ffff0-0000-7000-8000-000000000002	019fec69-eed4-79f0-9ce4-676ef7cd27f4
+019ffff0-0000-7000-8000-000000000003	019fec69-eed4-79f0-9ce4-676ef7cd27f4
+019ffff0-0000-7000-8000-000000000004	019fec69-eed4-79f0-9ce4-676ef7cd27f4
+019ffff0-0000-7000-8000-000000000005	019fec69-eed4-79f0-9ce4-676ef7cd27f4
 \.
 
 
@@ -540,6 +545,11 @@ COPY public."AspNetUsers" ("Id", "FullName", "AvatarUrl", "CreatedAt", "IsActive
 019fed6c-b2b6-7c03-9166-314cacf776a4	Demo Buyer 4		2026-08-10 20:45:51.621128+00	t	0	buyer4	BUYER4	buyer4@demo.ks	BUYER4@DEMO.KS	f	AQAAAAIAAYagAAAAEBEuxJAbTET0Qkv33bCbsf71m7rUuvLAfsDXbT+7nLuZ6fTLBcc+AD/H65/+kpcc/A==	YQ5BXTQMJAMJY52TBZRN7SDR2Q2NDDXZ	578862d5-27c5-499d-8b8c-598105bc0f3b	\N	f	f	\N	t	0
 019fed6c-b32b-7b05-b034-e2e3f61af42c	Demo Buyer 5		2026-08-10 20:45:51.738294+00	t	0	buyer5	BUYER5	buyer5@demo.ks	BUYER5@DEMO.KS	f	AQAAAAIAAYagAAAAEAV0zNrprvZ43A9xzyg/kyy250Gi5ZXuCJ5RmCZIvIDiODOLH9of44bNxxbQz587Sw==	UIQW5JLDPHWCZ3J27RIMTDFQDNTBZ3NG	b7ea508d-8fbe-413b-bf97-6ff50639fce4	\N	f	f	\N	t	0
 019fed6c-b3a5-7ae7-b66b-d46aea0484a6	Demo Buyer 6		2026-08-10 20:45:51.860146+00	t	0	buyer6	BUYER6	buyer6@demo.ks	BUYER6@DEMO.KS	f	AQAAAAIAAYagAAAAEEXJp/QpsQEK3X9iusfdB+xff7yVh977H79QXUZ4lI2DfixwfxPwdaQ2DPaEGlv6PA==	CXQ36OMHTZE45KYINCEOXHGPA3BPJDLK	05af2cf2-0a36-403e-a82e-973a3b69263e	\N	f	f	\N	t	0
+019ffff0-0000-7000-8000-000000000001	Carol Pham		2026-08-11 00:00:00+00	t	1	demo_iot	DEMO_IOT	iot@demo.ks	IOT@DEMO.KS	f	AQAAAAIAAYagAAAAEMqS5/HhhoXaZVSqQTZ2Px9gRhy9b4/nykplBkw2r8Hhb43XpZCsrXUCOMwjdPf98w==	e5000000-0000-4000-8000-000000000001	c5000000-0000-4000-8000-000000000001	\N	f	f	\N	t	0
+019ffff0-0000-7000-8000-000000000002	David Le		2026-08-11 00:00:00+00	t	1	demo_ai	DEMO_AI	ai@demo.ks	AI@DEMO.KS	f	AQAAAAIAAYagAAAAEMqS5/HhhoXaZVSqQTZ2Px9gRhy9b4/nykplBkw2r8Hhb43XpZCsrXUCOMwjdPf98w==	e5000000-0000-4000-8000-000000000002	c5000000-0000-4000-8000-000000000002	\N	f	f	\N	t	0
+019ffff0-0000-7000-8000-000000000003	Emma Vo		2026-08-11 00:00:00+00	t	1	demo_sec	DEMO_SEC	security@demo.ks	SECURITY@DEMO.KS	f	AQAAAAIAAYagAAAAEMqS5/HhhoXaZVSqQTZ2Px9gRhy9b4/nykplBkw2r8Hhb43XpZCsrXUCOMwjdPf98w==	e5000000-0000-4000-8000-000000000003	c5000000-0000-4000-8000-000000000003	\N	f	f	\N	t	0
+019ffff0-0000-7000-8000-000000000004	Frank Do		2026-08-11 00:00:00+00	t	1	demo_ops	DEMO_OPS	sysadmin@demo.ks	SYSADMIN@DEMO.KS	f	AQAAAAIAAYagAAAAEMqS5/HhhoXaZVSqQTZ2Px9gRhy9b4/nykplBkw2r8Hhb43XpZCsrXUCOMwjdPf98w==	e5000000-0000-4000-8000-000000000004	c5000000-0000-4000-8000-000000000004	\N	f	f	\N	t	0
+019ffff0-0000-7000-8000-000000000005	Grace Ha		2026-08-11 00:00:00+00	t	1	demo_dev	DEMO_DEV	developer@demo.ks	DEVELOPER@DEMO.KS	f	AQAAAAIAAYagAAAAEMqS5/HhhoXaZVSqQTZ2Px9gRhy9b4/nykplBkw2r8Hhb43XpZCsrXUCOMwjdPf98w==	e5000000-0000-4000-8000-000000000005	c5000000-0000-4000-8000-000000000005	\N	f	f	\N	t	0
 \.
 
 
@@ -561,6 +571,11 @@ c9b92d7e-cd95-4120-ae4a-a1e0dff952dd	Electronics	electronics		\N	\N
 1f7eef1c-edd0-4664-8afb-f15a9c442e28	Laptops	laptops		c9b92d7e-cd95-4120-ae4a-a1e0dff952dd	\N
 b0fb2314-f33a-4421-a085-6708c77283ba	Phones	phones		c9b92d7e-cd95-4120-ae4a-a1e0dff952dd	\N
 ee5ea3c2-79c5-4cbf-a9d0-8d551bde5574	Tablets	tablets		c9b92d7e-cd95-4120-ae4a-a1e0dff952dd	\N
+c0000000-0000-4000-8000-000000000001	IoT & Embedded	iot		\N	\N
+c0000000-0000-4000-8000-000000000002	AI & Machine Learning	ai-ml		\N	\N
+c0000000-0000-4000-8000-000000000003	Cybersecurity	security		\N	\N
+c0000000-0000-4000-8000-000000000004	SysAdmin & DevOps	sysadmin		\N	\N
+c0000000-0000-4000-8000-000000000005	Developer Tools	developer		\N	\N
 \.
 
 
@@ -675,6 +690,43 @@ e077c91e-e17c-4574-ae65-65ecf66c90b2	http://localhost:5000/uploads/apple-airpods
 e97cea66-359f-49f3-a5f7-5721530ae927	http://localhost:5000/uploads/oppo-a57.jpg	Oppo A57	t	0	85617635-c1f5-4984-9ca4-1b87809990d7
 f293cb43-8e3f-4eca-b1ad-99867cf4cb48	http://localhost:5000/uploads/oppo-f19-pro-plus.jpg	Oppo F19 Pro Plus	t	0	d331d383-c3d7-459f-94b9-862a0e650cc1
 f379e2c6-f104-432f-8f10-7d71b3324aec	http://localhost:5000/uploads/apple-airpower-wireless-charger.jpg	Apple Airpower Wireless Charger	t	0	5e1d2eef-2bdd-4c9d-863d-b15bce200541
+b0000000-0000-4000-8000-000000000001	http://localhost:5000/uploads/raspberry-pi-5-8gb.jpg	Raspberry Pi 5 8GB	t	0	a0000000-0000-4000-8000-000000000001
+b0000000-0000-4000-8000-000000000002	http://localhost:5000/uploads/esp32-devkit-v1.jpg	ESP32 DevKit V1	t	0	a0000000-0000-4000-8000-000000000002
+b0000000-0000-4000-8000-000000000003	http://localhost:5000/uploads/arduino-uno-r4-wifi.jpg	Arduino Uno R4 WiFi	t	0	a0000000-0000-4000-8000-000000000003
+b0000000-0000-4000-8000-000000000004	http://localhost:5000/uploads/raspberry-pi-pico-w.jpg	Raspberry Pi Pico W	t	0	a0000000-0000-4000-8000-000000000004
+b0000000-0000-4000-8000-000000000005	http://localhost:5000/uploads/lora-gateway-8-channel.jpg	LoRa Gateway 8-Channel	t	0	a0000000-0000-4000-8000-000000000005
+b0000000-0000-4000-8000-000000000006	http://localhost:5000/uploads/zigbee-smart-hub.jpg	Zigbee Smart Hub	t	0	a0000000-0000-4000-8000-000000000006
+b0000000-0000-4000-8000-000000000007	http://localhost:5000/uploads/dht22-sensor-kit.jpg	DHT22 Sensor Kit	t	0	a0000000-0000-4000-8000-000000000007
+b0000000-0000-4000-8000-000000000008	http://localhost:5000/uploads/mmwave-radar-sensor.jpg	mmWave Radar Sensor	t	0	a0000000-0000-4000-8000-000000000008
+b0000000-0000-4000-8000-000000000009	http://localhost:5000/uploads/nvidia-rtx-4090-24gb.jpg	NVIDIA RTX 4090 24GB	t	0	a0000000-0000-4000-8000-000000000009
+b0000000-0000-4000-8000-000000000010	http://localhost:5000/uploads/nvidia-jetson-orin-nano.jpg	NVIDIA Jetson Orin Nano	t	0	a0000000-0000-4000-8000-000000000010
+b0000000-0000-4000-8000-000000000011	http://localhost:5000/uploads/google-coral-usb-accelerator.jpg	Google Coral USB Accelerator	t	0	a0000000-0000-4000-8000-000000000011
+b0000000-0000-4000-8000-000000000012	http://localhost:5000/uploads/hailo-8-ai-accelerator.jpg	Hailo-8 AI Accelerator	t	0	a0000000-0000-4000-8000-000000000012
+b0000000-0000-4000-8000-000000000013	http://localhost:5000/uploads/intel-neural-compute-stick-2.jpg	Intel Neural Compute Stick 2	t	0	a0000000-0000-4000-8000-000000000013
+b0000000-0000-4000-8000-000000000014	http://localhost:5000/uploads/ai-workstation-threadripper.jpg	AI Workstation Threadripper	t	0	a0000000-0000-4000-8000-000000000014
+b0000000-0000-4000-8000-000000000015	http://localhost:5000/uploads/nvidia-a100-80gb.jpg	NVIDIA A100 80GB Tensor Core	t	0	a0000000-0000-4000-8000-000000000015
+b0000000-0000-4000-8000-000000000016	http://localhost:5000/uploads/yubikey-5-nfc.jpg	YubiKey 5 NFC	t	0	a0000000-0000-4000-8000-000000000016
+b0000000-0000-4000-8000-000000000017	http://localhost:5000/uploads/flipper-zero.jpg	Flipper Zero	t	0	a0000000-0000-4000-8000-000000000017
+b0000000-0000-4000-8000-000000000018	http://localhost:5000/uploads/hak5-wifi-pineapple.jpg	Hak5 WiFi Pineapple	t	0	a0000000-0000-4000-8000-000000000018
+b0000000-0000-4000-8000-000000000019	http://localhost:5000/uploads/proxmark3-rdv4.jpg	Proxmark3 RDV4	t	0	a0000000-0000-4000-8000-000000000019
+b0000000-0000-4000-8000-000000000020	http://localhost:5000/uploads/usb-rubber-ducky.jpg	USB Rubber Ducky	t	0	a0000000-0000-4000-8000-000000000020
+b0000000-0000-4000-8000-000000000021	http://localhost:5000/uploads/nitrokey-hsm-2.jpg	Nitrokey HSM 2	t	0	a0000000-0000-4000-8000-000000000021
+b0000000-0000-4000-8000-000000000022	http://localhost:5000/uploads/faraday-signal-blocking-bag.jpg	Faraday Signal-Blocking Bag	t	0	a0000000-0000-4000-8000-000000000022
+b0000000-0000-4000-8000-000000000023	http://localhost:5000/uploads/ubiquiti-unifi-dream-machine.jpg	Ubiquiti UniFi Dream Machine	t	0	a0000000-0000-4000-8000-000000000023
+b0000000-0000-4000-8000-000000000024	http://localhost:5000/uploads/24-port-managed-switch.jpg	24-Port Managed Switch	t	0	a0000000-0000-4000-8000-000000000024
+b0000000-0000-4000-8000-000000000025	http://localhost:5000/uploads/1u-rackmount-server.jpg	1U Rackmount Server	t	0	a0000000-0000-4000-8000-000000000025
+b0000000-0000-4000-8000-000000000026	http://localhost:5000/uploads/synology-4-bay-nas.jpg	Synology 4-Bay NAS	t	0	a0000000-0000-4000-8000-000000000026
+b0000000-0000-4000-8000-000000000027	http://localhost:5000/uploads/kvm-over-ip-switch.jpg	KVM over IP Switch	t	0	a0000000-0000-4000-8000-000000000027
+b0000000-0000-4000-8000-000000000028	http://localhost:5000/uploads/ups-1500va-rackmount.jpg	UPS 1500VA Rackmount	t	0	a0000000-0000-4000-8000-000000000028
+b0000000-0000-4000-8000-000000000029	http://localhost:5000/uploads/managed-pdu-rack-strip.jpg	Managed PDU Rack Strip	t	0	a0000000-0000-4000-8000-000000000029
+b0000000-0000-4000-8000-000000000030	http://localhost:5000/uploads/keychron-q1-mechanical-keyboard.jpg	Keychron Q1 Mechanical Keyboard	t	0	a0000000-0000-4000-8000-000000000030
+b0000000-0000-4000-8000-000000000031	http://localhost:5000/uploads/dev-monitor-4k-27.jpg	4K Dev Monitor 27-inch	t	0	a0000000-0000-4000-8000-000000000031
+b0000000-0000-4000-8000-000000000032	http://localhost:5000/uploads/usb-c-docking-station.jpg	USB-C Docking Station	t	0	a0000000-0000-4000-8000-000000000032
+b0000000-0000-4000-8000-000000000033	http://localhost:5000/uploads/elgato-stream-deck-mk2.jpg	Elgato Stream Deck MK.2	t	0	a0000000-0000-4000-8000-000000000033
+b0000000-0000-4000-8000-000000000034	http://localhost:5000/uploads/ergonomic-vertical-mouse.jpg	Ergonomic Vertical Mouse	t	0	a0000000-0000-4000-8000-000000000034
+b0000000-0000-4000-8000-000000000035	http://localhost:5000/uploads/aluminum-laptop-stand.jpg	Aluminum Laptop Stand	t	0	a0000000-0000-4000-8000-000000000035
+b0000000-0000-4000-8000-000000000036	http://localhost:5000/uploads/jetbrains-all-products-pack.jpg	JetBrains All Products Pack	t	0	a0000000-0000-4000-8000-000000000036
+b0000000-0000-4000-8000-000000000037	http://localhost:5000/uploads/github-copilot-1-year.jpg	GitHub Copilot 1-Year	t	0	a0000000-0000-4000-8000-000000000037
 \.
 
 
@@ -703,6 +755,43 @@ d331d383-c3d7-459f-94b9-862a0e650cc1	Oppo F19 Pro Plus	oppo-f19-pro-plus	The Opp
 133ead3f-3480-40f2-814f-9f19b628c659	Samsung Galaxy Tab White	samsung-galaxy-tab-white	The Samsung Galaxy Tab in White is a sleek and versatile Android tablet. With a vibrant display, long-lasting battery, and a range of features, it offers a g...	349.99	286.29	85	TAB-SAM-SAM-161	t	2026-08-10 16:03:13.874196+00	ee5ea3c2-79c5-4cbf-a9d0-8d551bde5574	977648dd-cda6-4c57-84cf-86e0069ecb2f
 6e0e1354-b1a2-4731-9611-e65e86b4ac59	Samsung Galaxy Tab S8 Plus Grey	samsung-galaxy-tab-s8-plus-grey	The Samsung Galaxy Tab S8 Plus in Grey is a high-performance Android tablet by Samsung. With a large AMOLED display, powerful processor, and S Pen support, i...	599.99	520.13	54	TAB-SAM-SAM-160	t	2026-08-10 16:03:13.873571+00	ee5ea3c2-79c5-4cbf-a9d0-8d551bde5574	977648dd-cda6-4c57-84cf-86e0069ecb2f
 8457e253-8e47-4da7-a6b6-bf27f3e2a062	iPad Mini 2021 Starlight	ipad-mini-2021-starlight	The iPad Mini 2021 in Starlight is a compact and powerful tablet from Apple. Featuring a stunning Retina display, powerful A-series chip, and a sleek design,...	499.99	481.79	40	TAB-APP-IPA-159	t	2026-08-10 16:03:13.872911+00	ee5ea3c2-79c5-4cbf-a9d0-8d551bde5574	977648dd-cda6-4c57-84cf-86e0069ecb2f
+a0000000-0000-4000-8000-000000000001	Raspberry Pi 5 8GB	raspberry-pi-5-8gb	The Raspberry Pi 5 with 8GB RAM is a credit-card sized computer powered by a quad-core Cortex-A76 CPU. Ideal for edge computing, home labs and IoT gateways.	89.99	82.99	120	IOT-RPI-RP5-201	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000002	ESP32 DevKit V1	esp32-devkit-v1	The ESP32 DevKit V1 is a low-cost Wi-Fi + Bluetooth microcontroller board, perfect for connected sensors, home automation and battery-powered IoT nodes.	12.99	9.99	300	IOT-ESP-E32-202	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000003	Arduino Uno R4 WiFi	arduino-uno-r4-wifi	The Arduino Uno R4 WiFi pairs a 32-bit Renesas MCU with an ESP32-S3 radio and a built-in LED matrix - a friendly board for learning embedded and IoT.	27.99	24.50	180	IOT-ARD-R4W-203	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000004	Raspberry Pi Pico W	raspberry-pi-pico-w	The Raspberry Pi Pico W is a tiny, ultra-affordable RP2040 microcontroller board with wireless connectivity for compact embedded projects.	6.99	\N	500	IOT-RPI-PCW-204	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000005	LoRa Gateway 8-Channel	lora-gateway-8-channel	An 8-channel LoRaWAN gateway that bridges long-range, low-power sensor networks to the internet - the backbone of city-scale and agricultural IoT.	159.99	139.99	45	IOT-LOR-8CH-205	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000006	Zigbee Smart Hub	zigbee-smart-hub	A Zigbee 3.0 smart home hub that locally controls lights, sensors and switches with low latency and no cloud dependency.	49.99	42.99	90	IOT-ZIG-HUB-206	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000007	DHT22 Sensor Kit	dht22-sensor-kit	A DHT22 temperature and humidity sensor kit with jumper wires and resistors - a classic starting point for environmental monitoring builds.	14.99	11.99	240	IOT-DHT-K22-207	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000008	mmWave Radar Sensor	mmwave-radar-sensor	A 60GHz mmWave presence-detection radar module that senses micro-movements for reliable room occupancy and fall detection in smart spaces.	19.99	\N	160	IOT-MMW-RAD-208	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000001	5f000000-0000-4000-8000-000000000001
+a0000000-0000-4000-8000-000000000009	NVIDIA RTX 4090 24GB	nvidia-rtx-4090-24gb	The NVIDIA RTX 4090 with 24GB GDDR6X delivers massive throughput for training and fine-tuning deep learning models, plus blistering local inference.	1799.99	1699.99	20	AI-NVD-4090-301	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000010	NVIDIA Jetson Orin Nano	nvidia-jetson-orin-nano	The Jetson Orin Nano developer kit brings up to 40 TOPS of AI performance to the edge, running modern vision and robotics models in a tiny footprint.	499.99	469.99	55	AI-NVD-ORN-302	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000011	Google Coral USB Accelerator	google-coral-usb-accelerator	The Coral USB Accelerator adds an Edge TPU coprocessor over USB-C, running TensorFlow Lite models fast and efficiently on any host machine.	59.99	54.99	130	AI-GOO-COR-303	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000012	Hailo-8 AI Accelerator	hailo-8-ai-accelerator	The Hailo-8 M.2 module delivers up to 26 TOPS at remarkable power efficiency, ideal for embedding real-time neural inference into edge products.	219.99	\N	40	AI-HAI-H8A-304	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000013	Intel Neural Compute Stick 2	intel-neural-compute-stick-2	The Intel Neural Compute Stick 2 is a plug-and-play USB accelerator powered by the Movidius Myriad X VPU for prototyping deep-learning inference.	99.99	84.99	70	AI-INT-NCS-305	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000014	AI Workstation Threadripper	ai-workstation-threadripper	A pre-built AI workstation with an AMD Threadripper CPU, 128GB RAM and dual GPUs - ready for serious model training straight out of the box.	4999.99	4699.99	8	AI-WKS-TRX-306	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000015	NVIDIA A100 80GB Tensor Core	nvidia-a100-80gb	The NVIDIA A100 80GB is a data-center GPU engineered for large-scale training and high-throughput inference across demanding AI and HPC workloads.	15999.99	\N	5	AI-NVD-A100-307	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000002	5f000000-0000-4000-8000-000000000002
+a0000000-0000-4000-8000-000000000016	YubiKey 5 NFC	yubikey-5-nfc	The YubiKey 5 NFC is a hardware security key supporting FIDO2, U2F, OTP and smart-card protocols for phishing-resistant multi-factor authentication.	55.00	49.00	200	SEC-YUB-5NF-401	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000017	Flipper Zero	flipper-zero	The Flipper Zero is a portable multi-tool for pentesters and hardware hackers - sub-GHz radio, RFID/NFC, infrared and GPIO in a pocket device.	169.99	159.99	60	SEC-FLP-ZRO-402	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000018	Hak5 WiFi Pineapple	hak5-wifi-pineapple	The Hak5 WiFi Pineapple is a purpose-built platform for authorized wireless auditing and rogue-AP assessments during red-team engagements.	119.99	\N	35	SEC-HAK-WPA-403	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000019	Proxmark3 RDV4	proxmark3-rdv4	The Proxmark3 RDV4 is the reference tool for RFID research, reading, emulating and analyzing LF and HF contactless cards and tags.	299.99	279.99	25	SEC-PXM-RV4-404	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000020	USB Rubber Ducky	usb-rubber-ducky	The USB Rubber Ducky is a keystroke-injection tool that a target sees as a keyboard - a staple for demonstrating HID attack payloads in labs.	79.99	69.99	80	SEC-HAK-DUK-405	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000021	Nitrokey HSM 2	nitrokey-hsm-2	The Nitrokey HSM 2 is an open-source hardware security module that securely generates and stores cryptographic keys for PKI and code signing.	109.00	\N	50	SEC-NTK-HS2-406	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000022	Faraday Signal-Blocking Bag	faraday-signal-blocking-bag	A Faraday bag that blocks cellular, Wi-Fi, GPS and RFID signals to preserve digital evidence and protect devices from remote wiping or tracking.	29.99	24.99	150	SEC-FRD-BAG-407	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000003	5f000000-0000-4000-8000-000000000003
+a0000000-0000-4000-8000-000000000023	Ubiquiti UniFi Dream Machine	ubiquiti-unifi-dream-machine	The UniFi Dream Machine combines a security gateway, controller, switch and access point into one appliance for clean, manageable networks.	379.99	349.99	40	OPS-UBI-UDM-501	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000024	24-Port Managed Switch	24-port-managed-switch	A 24-port gigabit managed switch with VLANs, LACP and PoE budget - the workhorse of a well-segmented server rack.	219.99	199.99	55	OPS-NET-24S-502	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000025	1U Rackmount Server	1u-rackmount-server	A 1U rackmount server with a Xeon CPU, ECC memory and redundant PSUs - dense, reliable compute for virtualization and self-hosting.	1299.99	1199.99	18	OPS-SRV-1U-503	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000026	Synology 4-Bay NAS	synology-4-bay-nas	The Synology 4-Bay NAS delivers centralized storage, backups and Docker services with a polished DSM interface for homelabs and small teams.	449.99	419.99	30	OPS-SYN-4BN-504	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000027	KVM over IP Switch	kvm-over-ip-switch	A KVM-over-IP switch that gives BIOS-level remote keyboard, video and mouse access to headless servers from anywhere.	189.99	\N	42	OPS-KVM-IP-505	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000028	UPS 1500VA Rackmount	ups-1500va-rackmount	A 1500VA line-interactive rackmount UPS with pure sine-wave output and network monitoring to keep infrastructure alive through outages.	279.99	249.99	36	OPS-UPS-15R-506	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000029	Managed PDU Rack Strip	managed-pdu-rack-strip	A managed rack PDU with per-outlet metering and remote switching, so you can power-cycle any device in the rack over the network.	159.99	144.99	48	OPS-PDU-RCK-507	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000004	5f000000-0000-4000-8000-000000000004
+a0000000-0000-4000-8000-000000000030	Keychron Q1 Mechanical Keyboard	keychron-q1-mechanical-keyboard	The Keychron Q1 is a gasket-mounted, hot-swappable mechanical keyboard with a CNC aluminum body - a favorite for long coding sessions.	179.99	164.99	90	DEV-KEY-Q1M-601	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000031	4K Dev Monitor 27-inch	dev-monitor-4k-27	A 27-inch 4K IPS monitor with USB-C power delivery and factory color calibration - crisp text and plenty of room for code and terminals.	399.99	359.99	60	DEV-MON-4K27-602	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000032	USB-C Docking Station	usb-c-docking-station	A single-cable USB-C dock that adds dual displays, gigabit Ethernet, USB-A ports and 100W passthrough charging to any laptop.	129.99	114.99	110	DEV-DOK-USC-603	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000033	Elgato Stream Deck MK.2	elgato-stream-deck-mk2	The Elgato Stream Deck MK.2 gives you 15 programmable LCD keys to trigger builds, run scripts and control your dev workflow at a tap.	149.99	139.99	75	DEV-ELG-SD2-604	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000034	Ergonomic Vertical Mouse	ergonomic-vertical-mouse	An ergonomic vertical mouse that keeps your wrist in a natural handshake position to reduce strain during all-day work.	39.99	34.99	200	DEV-MOU-VRT-605	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000035	Aluminum Laptop Stand	aluminum-laptop-stand	A sturdy aluminum laptop stand that raises your screen to eye level and improves airflow, keeping thermals and posture in check.	34.99	29.99	180	DEV-STD-ALU-606	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000036	JetBrains All Products Pack	jetbrains-all-products-pack	A one-year individual license for the JetBrains All Products Pack - IntelliJ IDEA, PyCharm, WebStorm, Rider and every other JetBrains IDE.	289.00	\N	999	DEV-JBR-APP-607	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
+a0000000-0000-4000-8000-000000000037	GitHub Copilot 1-Year	github-copilot-1-year	A one-year GitHub Copilot subscription - AI pair-programming that suggests whole lines and functions right inside your editor.	100.00	\N	999	DEV-GHC-1YR-608	t	2026-08-11 00:00:00+00	c0000000-0000-4000-8000-000000000005	5f000000-0000-4000-8000-000000000005
 \.
 
 
@@ -758,6 +847,11 @@ COPY public."Reviews" ("Id", "Rating", "Comment", "CreatedAt", "ProductId", "Use
 COPY public."Shops" ("Id", "Name", "Slug", "Description", "LogoUrl", "Status", "CreatedAt", "OwnerId") FROM stdin;
 5d76f670-7104-40ee-8817-07fef9d1f878	GadgetHub	gadgethub	Audio, smart speakers, chargers and mobile accessories.		1	2026-08-10 16:03:13.797294+00	019fec69-f0da-7aac-b148-e1abfb5ec992
 977648dd-cda6-4c57-84cf-86e0069ecb2f	TechWorld Store	techworld-store	Authentic laptops, smartphones and tablets from top brands.		1	2026-08-10 16:03:13.775394+00	019fec69-f09e-7b2f-92cd-74ca128c3dd0
+5f000000-0000-4000-8000-000000000001	IoT Depot	iot-depot	Single-board computers, microcontrollers, sensors and gateways for makers and embedded engineers.		1	2026-08-11 00:00:00+00	019ffff0-0000-7000-8000-000000000001
+5f000000-0000-4000-8000-000000000002	Neural Forge	neural-forge	GPUs, edge accelerators and workstations built for training and deploying AI models.		1	2026-08-11 00:00:00+00	019ffff0-0000-7000-8000-000000000002
+5f000000-0000-4000-8000-000000000003	SecOps Armory	secops-armory	Hardware keys, pentest gadgets and security tooling for red and blue teams.		1	2026-08-11 00:00:00+00	019ffff0-0000-7000-8000-000000000003
+5f000000-0000-4000-8000-000000000004	OpsCenter	opscenter	Networking, rackmount servers, NAS and power gear to run reliable infrastructure.		1	2026-08-11 00:00:00+00	019ffff0-0000-7000-8000-000000000004
+5f000000-0000-4000-8000-000000000005	DevTools Hub	devtools-hub	Keyboards, monitors, docks and software licenses that power a developer's workflow.		1	2026-08-11 00:00:00+00	019ffff0-0000-7000-8000-000000000005
 \.
 
 

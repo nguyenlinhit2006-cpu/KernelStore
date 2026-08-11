@@ -9,6 +9,7 @@ use crate::api::{
 use crate::auth::AuthContext;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
+use crate::i18n::use_i18n;
 
 fn short_time(raw: &str) -> String {
     // "2026-08-09T08:51:43Z" → "08-09 08:51"
@@ -21,6 +22,7 @@ fn short_time(raw: &str) -> String {
 pub fn ChatPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let query = use_query_map();
 
     let conversations = RwSignal::new(Vec::<ConversationInfo>::new());
@@ -115,7 +117,7 @@ pub fn ChatPage() -> impl IntoView {
                     refresh.update(|n| *n += 1);
                 }
                 Err(e) => {
-                    toasts.error(format!("Không thể gửi tin nhắn: {e}"));
+                    toasts.error(format!("{}{e}", i18n.t("chat.send_failed")));
                     input.set(content); // Restore input on failure
                 }
             }
@@ -143,19 +145,19 @@ pub fn ChatPage() -> impl IntoView {
     view! {
         <div class="max-w-5xl mx-auto p-6">
             <p class="term-muted text-sm mb-1">"$ kernelstore --chat"</p>
-            <h1 class="text-lg font-bold mb-4">"> messages"</h1>
+            <h1 class="text-lg font-bold mb-4">{move || i18n.t("chat.title")}</h1>
 
             <div class="grid grid-cols-1 sm:grid-cols-[16rem_1fr] gap-4">
                 // ── Conversation list ────────────────────────────────────
                 <aside class="term-box p-2 h-[28rem] overflow-y-auto">
                     {move || {
                         if loading.get() {
-                            return view! { <p class="p-2"><Loading text="loading"/></p> }.into_any();
+                            return view! { <p class="p-2"><Loading text=i18n.t("chat.loading")/></p> }.into_any();
                         }
                         let list = conversations.get();
                         if list.is_empty() {
                             return view! {
-                                <p class="term-muted text-xs p-2">"// chưa có hội thoại nào"</p>
+                                <p class="term-muted text-xs p-2">{i18n.t("chat.no_convos")}</p>
                             }.into_any();
                         }
                         view! {
@@ -193,15 +195,15 @@ pub fn ChatPage() -> impl IntoView {
                         if selected.get().is_none() {
                             return view! {
                                 <div class="flex-1 flex items-center justify-center">
-                                    <p class="term-muted text-sm">"// chọn một hội thoại để bắt đầu"</p>
+                                    <p class="term-muted text-sm">{i18n.t("chat.pick_convo")}</p>
                                 </div>
                             }.into_any();
                         }
                         let convo = active_conversation();
-                        let title = convo.map(|c| c.other_name).unwrap_or_else(|| "hội thoại".to_string());
+                        let title = convo.map(|c| c.other_name).unwrap_or_else(|| i18n.t("chat.convo").to_string());
                         view! {
                             <div class="border-b border-[var(--border)] p-2 bg-[var(--bg-secondary)] flex justify-between items-center shrink-0">
-                                <span class="text-sm font-bold text-[var(--fg-primary)]">{format!("> chat with: {title}")}</span>
+                                <span class="text-sm font-bold text-[var(--fg-primary)]">{format!("{}{title}", i18n.t("chat.with"))}</span>
                             </div>
                             <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-2" node_ref=messages_container>
                                 {move || {
@@ -228,13 +230,13 @@ pub fn ChatPage() -> impl IntoView {
                             <div class="border-t border-[var(--border)] p-2 flex items-center gap-2">
                                 <input
                                     class="term-input flex-1 px-3 py-2 text-sm"
-                                    placeholder="nhập tin nhắn..."
+                                    placeholder=i18n.t("chat.input_ph")
                                     prop:value=move || input.get()
                                     on:input=move |ev| input.set(event_target_value(&ev))
                                     on:keydown=move |ev| if ev.key() == "Enter" { send(()) }
                                 />
                                 <button class="term-btn px-4 py-2 text-sm" on:click=move |_| send(())>
-                                    "$ gửi"
+                                    {i18n.t("chat.send")}
                                 </button>
                             </div>
                         }.into_any()

@@ -10,6 +10,7 @@ use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
+use crate::i18n::use_i18n;
 
 /// Order statuses a seller can transition an order to. "Delivered" is intentionally
 /// excluded — only the buyer sets it, by confirming receipt.
@@ -34,6 +35,7 @@ fn short_date(raw: &str) -> String {
 #[component]
 pub fn OrdersPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
 
     let orders = RwSignal::new(None::<Vec<Order>>);
     let loading = RwSignal::new(true);
@@ -53,7 +55,7 @@ pub fn OrdersPage() -> impl IntoView {
     view! {
         <div class="max-w-4xl mx-auto p-6">
             <p class="term-muted text-sm mb-1">"$ kernelstore --orders"</p>
-            <h1 class="text-lg font-bold mb-4">"> order history"</h1>
+            <h1 class="text-lg font-bold mb-4">{move || i18n.t("orders.title")}</h1>
 
             <Show when=move || !error.get().is_empty()>
                 <p class="term-error text-sm mb-3">"[ERROR] " {move || error.get()}</p>
@@ -62,19 +64,19 @@ pub fn OrdersPage() -> impl IntoView {
             {move || {
                 if loading.get() {
                     return view! {
-                        <p><Loading text="loading orders"/></p>
+                        <p><Loading text=i18n.t("orders.loading")/></p>
                     }.into_any();
                 }
 
                 let Some(list) = orders.get() else {
-                    return view! { <p class="term-error">"failed to load orders"</p> }.into_any();
+                    return view! { <p class="term-error">{i18n.t("orders.load_failed")}</p> }.into_any();
                 };
 
                 if list.is_empty() {
                     return view! {
                         <div class="term-box p-8 text-center">
-                            <p class="term-muted text-sm mb-4">"// no orders yet"</p>
-                            <a href="/products" class="term-btn inline-block px-4 py-2 text-sm">"$ browse products →"</a>
+                            <p class="term-muted text-sm mb-4">{i18n.t("orders.none")}</p>
+                            <a href="/products" class="term-btn inline-block px-4 py-2 text-sm">{i18n.t("orders.browse")}</a>
                         </div>
                     }.into_any();
                 }
@@ -91,6 +93,7 @@ pub fn OrdersPage() -> impl IntoView {
 
 #[component]
 fn OrderRow(order: Order) -> impl IntoView {
+    let i18n = use_i18n();
     let href = format!("/orders/{}", order.id);
     let sclass = status_class(&order.status);
     view! {
@@ -103,7 +106,7 @@ fn OrderRow(order: Order) -> impl IntoView {
                 <span class=format!("text-xs {sclass}")>{order.status}</span>
             </div>
             <div class="flex items-center justify-between gap-3 mt-1 text-xs term-muted">
-                <span>{format!("{} item(s)", order.item_count)}</span>
+                <span>{format!("{} {}", order.item_count, i18n.t("common.items"))}</span>
                 <span class="text-[var(--fg-primary)]">{format!("${:.2}", order.total_amount)}</span>
             </div>
         </a>
@@ -113,6 +116,7 @@ fn OrderRow(order: Order) -> impl IntoView {
 #[component]
 pub fn OrderDetailPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
     let params = use_params_map();
     let id = move || params.get().get("id").unwrap_or_default();
 
@@ -138,12 +142,12 @@ pub fn OrderDetailPage() -> impl IntoView {
 
     view! {
         <div class="max-w-3xl mx-auto p-6">
-            <a href="/orders" class="term-muted text-xs hover:underline">"< back to /orders"</a>
+            <a href="/orders" class="term-muted text-xs hover:underline">{move || i18n.t("orders.back")}</a>
 
             {move || {
                 if loading.get() {
                     return view! {
-                        <p class="py-8"><Loading text="loading order"/></p>
+                        <p class="py-8"><Loading text=i18n.t("orders.loading_order")/></p>
                     }.into_any();
                 }
 
@@ -152,26 +156,26 @@ pub fn OrderDetailPage() -> impl IntoView {
                         ApiError::NotFound => view! {
                             <KernelPanic
                                 code="404"
-                                title="order not found"
-                                detail="no such order, or you don't have access to it"
+                                title=i18n.t("orders.not_found")
+                                detail=i18n.t("orders.not_found_detail")
                                 back_href="/orders"
-                                back_label="< back to /orders"
+                                back_label=i18n.t("orders.back")
                             />
                         }.into_any(),
                         other => view! {
                             <KernelPanic
                                 code="500"
-                                title="failed to load order"
+                                title=i18n.t("orders.detail_failed")
                                 detail=other.to_string()
                                 back_href="/orders"
-                                back_label="< back to /orders"
+                                back_label=i18n.t("orders.back")
                             />
                         }.into_any(),
                     };
                 }
 
                 let Some(o) = order.get() else {
-                    return view! { <p class="term-error">"failed to load order"</p> }.into_any();
+                    return view! { <p class="term-error">{i18n.t("orders.detail_failed")}</p> }.into_any();
                 };
 
                 let role = auth.user.get().map(|u| u.role).unwrap_or_default();
@@ -220,6 +224,7 @@ pub fn OrderDetailPage() -> impl IntoView {
 fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let busy = RwSignal::new(false);
 
     let confirm = move |_| {
@@ -233,7 +238,7 @@ fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         spawn_local(async move {
             match confirm_received(&token, &id).await {
                 Ok(updated) => {
-                    toasts.success("đã xác nhận nhận hàng — bạn có thể đánh giá sản phẩm");
+                    toasts.success(i18n.t("orders.received_toast"));
                     order_signal.set(Some(updated));
                 }
                 Err(e) => toasts.error(e.to_string()),
@@ -244,16 +249,16 @@ fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
     view! {
         <div class="term-box p-4 mt-4">
-            <p class="term-muted text-xs mb-2"># nhận hàng</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("orders.receipt")}</p>
             <p class="text-sm mb-3">
-                "Đơn đã được giao tới bạn? Xác nhận để hoàn tất đơn và mở đánh giá sản phẩm."
+                {move || i18n.t("orders.receipt_hint")}
             </p>
             <button
                 class="term-btn px-4 py-1.5 text-sm"
                 disabled=move || busy.get()
                 on:click=confirm
             >
-                {move || if busy.get() { "đang xác nhận..." } else { "$ đã nhận hàng ✓" }}
+                {move || if busy.get() { i18n.t("orders.confirming") } else { i18n.t("orders.received") }}
             </button>
         </div>
     }
@@ -264,6 +269,7 @@ fn ConfirmReceipt(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 fn CancelOrder(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let busy = RwSignal::new(false);
 
     let cancel = move |_| {
@@ -277,7 +283,7 @@ fn CancelOrder(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         spawn_local(async move {
             match cancel_order(&token, &id).await {
                 Ok(updated) => {
-                    toasts.info("đã hủy đơn hàng");
+                    toasts.info(i18n.t("orders.cancel_toast"));
                     order_signal.set(Some(updated));
                 }
                 Err(e) => toasts.error(e.to_string()),
@@ -288,14 +294,14 @@ fn CancelOrder(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
     view! {
         <div class="term-box p-4 mt-4">
-            <p class="term-muted text-xs mb-2"># hủy đơn</p>
-            <p class="text-sm mb-3">"Đổi ý? Bạn có thể hủy khi đơn chưa được giao — hàng sẽ được hoàn về kho."</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("orders.cancel_h")}</p>
+            <p class="text-sm mb-3">{move || i18n.t("orders.cancel_hint")}</p>
             <button
                 class="term-btn px-4 py-1.5 text-sm term-error"
                 disabled=move || busy.get()
                 on:click=cancel
             >
-                {move || if busy.get() { "đang hủy..." } else { "$ hủy đơn hàng" }}
+                {move || if busy.get() { i18n.t("orders.cancelling") } else { i18n.t("orders.cancel_btn") }}
             </button>
         </div>
     }
@@ -306,6 +312,7 @@ fn CancelOrder(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 fn ReturnRequest(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let busy = RwSignal::new(false);
 
     let request = move |_| {
@@ -319,7 +326,7 @@ fn ReturnRequest(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         spawn_local(async move {
             match request_return(&token, &id).await {
                 Ok(updated) => {
-                    toasts.info("đã gửi yêu cầu trả hàng");
+                    toasts.info(i18n.t("orders.return_toast"));
                     order_signal.set(Some(updated));
                 }
                 Err(e) => toasts.error(e.to_string()),
@@ -330,14 +337,14 @@ fn ReturnRequest(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
     view! {
         <div class="term-box p-4 mt-4">
-            <p class="term-muted text-xs mb-2"># trả hàng</p>
-            <p class="text-sm mb-3">"Sản phẩm có vấn đề? Gửi yêu cầu trả hàng để người bán xem xét."</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("orders.return_h")}</p>
+            <p class="text-sm mb-3">{move || i18n.t("orders.return_hint")}</p>
             <button
                 class="term-btn px-4 py-1.5 text-sm"
                 disabled=move || busy.get()
                 on:click=request
             >
-                {move || if busy.get() { "đang gửi..." } else { "$ yêu cầu trả hàng" }}
+                {move || if busy.get() { i18n.t("orders.sending") } else { i18n.t("orders.return_btn") }}
             </button>
         </div>
     }
@@ -348,6 +355,7 @@ fn ReturnRequest(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 fn ReturnResolver(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let busy = RwSignal::new(false);
 
     let resolve = move |approve: bool| {
@@ -361,7 +369,7 @@ fn ReturnResolver(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         spawn_local(async move {
             match resolve_return(&token, &id, approve).await {
                 Ok(updated) => {
-                    toasts.info(if approve { "đã duyệt trả hàng" } else { "đã từ chối trả hàng" });
+                    toasts.info(if approve { i18n.t("orders.return_approved") } else { i18n.t("orders.return_rejected") });
                     order_signal.set(Some(updated));
                 }
                 Err(e) => toasts.error(e.to_string()),
@@ -372,22 +380,22 @@ fn ReturnResolver(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
     view! {
         <div class="term-box p-4 mt-4">
-            <p class="term-muted text-xs mb-2"># yêu cầu trả hàng (seller/admin)</p>
-            <p class="text-sm mb-3">"Khách đã yêu cầu trả hàng. Duyệt sẽ hoàn hàng về kho."</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("orders.resolve_h")}</p>
+            <p class="text-sm mb-3">{move || i18n.t("orders.resolve_hint")}</p>
             <div class="flex items-center gap-2 flex-wrap">
                 <button
                     class="term-btn px-4 py-1.5 text-sm"
                     disabled=move || busy.get()
                     on:click=move |_| resolve(true)
                 >
-                    {move || if busy.get() { "..." } else { "$ duyệt trả hàng" }}
+                    {move || if busy.get() { "..." } else { i18n.t("orders.approve_return") }}
                 </button>
                 <button
                     class="term-btn px-4 py-1.5 text-sm term-error"
                     disabled=move || busy.get()
                     on:click=move |_| resolve(false)
                 >
-                    "$ từ chối"
+                    {move || i18n.t("orders.reject_return")}
                 </button>
             </div>
         </div>
@@ -398,6 +406,7 @@ fn ReturnResolver(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
     let busy = RwSignal::new(false);
     let msg = RwSignal::new(String::new());
 
@@ -420,7 +429,7 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         let Some(o) = order_signal.get() else { return };
         let target = selected.get();
         if target == o.status {
-            msg.set("status unchanged".to_string());
+            msg.set(i18n.t("orders.status_unchanged").to_string());
             return;
         }
         busy.set(true);
@@ -430,13 +439,13 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
         spawn_local(async move {
             match update_order_status(&token, &id, &target).await {
                 Ok(updated) => {
-                    toasts.info(format!("status → {}", updated.status));
+                    toasts.info(format!("{}{}", i18n.t("orders.status_arrow"), updated.status));
                     selected.set(updated.status.clone());
                     order_signal.set(Some(updated));
-                    msg.set("status updated".to_string());
+                    msg.set(i18n.t("orders.status_updated").to_string());
                 }
                 Err(e) => {
-                    msg.set(format!("error: {e}"));
+                    msg.set(format!("{}{e}", i18n.t("products.error")));
                     toasts.error(e.to_string());
                 }
             }
@@ -446,11 +455,11 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
     view! {
         <div class="term-box p-4 mt-4">
-            <p class="term-muted text-xs mb-2"># manage status (seller/admin)</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("orders.manage_h")}</p>
             <Show
                 when=move || !terminal()
-                fallback=|| view! {
-                    <p class="term-muted text-sm">"order is finalized — status can no longer change."</p>
+                fallback=move || view! {
+                    <p class="term-muted text-sm">{i18n.t("orders.finalized")}</p>
                 }
             >
                 <div class="flex items-center gap-2 flex-wrap">
@@ -468,7 +477,7 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
                         disabled=move || busy.get()
                         on:click=apply
                     >
-                        {move || if busy.get() { "updating..." } else { "$ update status" }}
+                        {move || if busy.get() { i18n.t("orders.updating") } else { i18n.t("orders.update_status") }}
                     </button>
                 </div>
             </Show>
@@ -481,6 +490,7 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 
 #[component]
 fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> impl IntoView {
+    let i18n = use_i18n();
     let sclass = status_class(&order.status);
     let a = order.address.clone();
     let addr_line = [a.street, a.ward, a.district, a.city]
@@ -502,9 +512,9 @@ fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> i
             // ── Items ────────────────────────────────────────────────────
             <div class="term-box overflow-hidden">
                 <div class="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-2 text-xs term-muted border-b border-[var(--border)]">
-                    <span>"product"</span>
-                    <span class="text-center w-16">"qty"</span>
-                    <span class="text-right w-24">"total"</span>
+                    <span>{i18n.t("orders.col_product")}</span>
+                    <span class="text-center w-16">{i18n.t("orders.col_qty")}</span>
+                    <span class="text-right w-24">{i18n.t("orders.col_total")}</span>
                 </div>
                 {order.items.into_iter().map(|item| {
                     let img = item.image_url.clone().unwrap_or_default();
@@ -545,27 +555,27 @@ fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> i
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 // ── Shipping address ─────────────────────────────────────
                 <div class="term-sub p-4">
-                    <p class="term-muted text-xs mb-2"># ship to</p>
+                    <p class="term-muted text-xs mb-2">{i18n.t("orders.ship_to")}</p>
                     <p class="text-sm text-[var(--fg-primary)]">{order.address.full_name.clone()}</p>
                     <p class="text-sm term-muted">{order.address.phone.clone()}</p>
                     <p class="text-sm term-muted">{addr_line}</p>
                     {(!order.note.is_empty()).then(|| view! {
-                        <p class="text-xs term-muted mt-2">{format!("note: {}", order.note)}</p>
+                        <p class="text-xs term-muted mt-2">{format!("{}{}", i18n.t("orders.note"), order.note)}</p>
                     })}
                 </div>
 
                 // ── Totals ───────────────────────────────────────────────
                 <div class="term-sub p-4">
                     <div class="flex justify-between text-sm mb-1">
-                        <span class="term-muted">"items:"</span>
+                        <span class="term-muted">{i18n.t("orders.items")}</span>
                         <span>{order.item_count}</span>
                     </div>
                     <div class="flex justify-between text-sm mb-1">
-                        <span class="term-muted">"shipping:"</span>
+                        <span class="term-muted">{i18n.t("orders.shipping")}</span>
                         <span>{format!("${:.2}", order.shipping_fee)}</span>
                     </div>
                     <div class="flex justify-between text-base border-t border-[var(--border)] pt-2 mt-2">
-                        <span class="term-muted">"total:"</span>
+                        <span class="term-muted">{i18n.t("orders.total")}</span>
                         <span class="text-[var(--fg-primary)] font-bold">{format!("${:.2}", order.total_amount)}</span>
                     </div>
                 </div>
@@ -579,6 +589,7 @@ fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> i
 fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
 
     let product_id = StoredValue::new(product_id);
     let rating = RwSignal::new(5);
@@ -601,11 +612,11 @@ fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
             match create_review(&token, &pid, r, &c).await {
                 Ok(_) => {
                     done.set(true);
-                    msg.set("✓ thanks — your review was submitted".to_string());
-                    toasts.success("review submitted");
+                    msg.set(i18n.t("orders.review_thanks").to_string());
+                    toasts.success(i18n.t("orders.review_submitted"));
                 }
                 Err(e) => {
-                    msg.set(format!("error: {e}"));
+                    msg.set(format!("{}{e}", i18n.t("products.error")));
                     toasts.error(e.to_string());
                 }
             }
@@ -622,7 +633,7 @@ fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
                 }
             >
                 <div class="term-sub p-3">
-                    <p class="term-muted text-xs mb-2">{format!("# review: {product_name}")}</p>
+                    <p class="term-muted text-xs mb-2">{format!("{}{product_name}", i18n.t("orders.review_prefix"))}</p>
                     // ── star picker ──────────────────────────────────────
                     <div class="flex items-center gap-1 mb-2">
                         {(1..=5).map(|n| {
@@ -641,7 +652,7 @@ fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
                     <textarea
                         class="term-input w-full px-3 py-2 text-sm mb-2"
                         rows="2"
-                        placeholder="write your review (optional)"
+                        placeholder=i18n.t("orders.review_ph")
                         prop:value=move || comment.get()
                         on:input=move |ev| comment.set(event_target_value(&ev))
                     ></textarea>
@@ -651,7 +662,7 @@ fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
                             disabled=move || busy.get()
                             on:click=submit
                         >
-                            {move || if busy.get() { "submitting..." } else { "$ submit review" }}
+                            {move || if busy.get() { i18n.t("orders.submitting") } else { i18n.t("orders.submit_review") }}
                         </button>
                         <Show when=move || !msg.get().is_empty()>
                             <span class="term-warn text-xs">{move || msg.get()}</span>

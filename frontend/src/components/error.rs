@@ -1,5 +1,7 @@
 use leptos::prelude::*;
 
+use crate::i18n::use_i18n;
+
 /// Terminal "kernel panic" error panel — used for 404 (route/resource not
 /// found) and 500-style (server/network) failures across the app.
 #[component]
@@ -15,10 +17,11 @@ pub fn KernelPanic(
     /// Label for the recovery link (defaults to "$ cd /").
     #[prop(into, optional)] back_label: Option<String>,
 ) -> impl IntoView {
+    let i18n = use_i18n();
     let href = back_href.unwrap_or_else(|| "/".to_string());
     let label = back_label.unwrap_or_else(|| "$ cd /".to_string());
     let detail = if detail.is_empty() {
-        "the requested module is not present in the registry".to_string()
+        i18n.t("panic.default_detail").to_string()
     } else {
         detail
     };

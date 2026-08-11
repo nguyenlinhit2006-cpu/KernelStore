@@ -5,10 +5,12 @@ use leptos_router::hooks::use_navigate;
 
 use crate::auth::AuthContext;
 use crate::components::input::TermInput;
+use crate::i18n::use_i18n;
 
 #[component]
 pub fn LoginPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
     let navigate = use_navigate();
 
     let email = RwSignal::new(String::new());
@@ -21,7 +23,7 @@ pub fn LoginPage() -> impl IntoView {
         let pass_val = password.get();
 
         if email_val.is_empty() || pass_val.is_empty() {
-            error.set("email and password are required".to_string());
+            error.set(i18n.t("login.required").to_string());
             return;
         }
 
@@ -37,12 +39,12 @@ pub fn LoginPage() -> impl IntoView {
 
     view! {
         <div class="max-w-md mx-auto p-6">
-            <p class="term-muted text-sm mb-1">"$ kernelstore --login"</p>
-            <h1 class="text-lg font-bold mb-4">"> authentication :: login"</h1>
+            <p class="term-muted text-sm mb-1">{move || i18n.t("login.cmd")}</p>
+            <h1 class="text-lg font-bold mb-4">{move || i18n.t("login.title")}</h1>
 
             <div class="term-box p-5">
-                <TermInput id="login-email" label="email" input_type="email" placeholder="you@example.com" value=email/>
-                <TermInput id="login-password" label="password" input_type="password" placeholder="********" value=password/>
+                <TermInput id="login-email" label=i18n.t("login.email") input_type="email" placeholder="you@example.com" value=email/>
+                <TermInput id="login-password" label=i18n.t("login.password") input_type="password" placeholder="********" value=password/>
 
                 <p class="term-error text-sm mb-2" class:invisible=move || error.get().is_empty()>
                     "[ERROR] " {move || error.get()}
@@ -54,15 +56,15 @@ pub fn LoginPage() -> impl IntoView {
                     prop:disabled=move || auth.is_loading.get()
                 >
                     {move || if auth.is_loading.get() {
-                        "loading..._".to_string()
+                        i18n.t("login.loading")
                     } else {
-                        "$ login".to_string()
+                        i18n.t("login.submit")
                     }}
                 </button>
 
                 <p class="mt-4 text-sm term-muted">
-                    "No account? "
-                    <A href="/auth/register" attr:class="text-[var(--fg-primary)] underline">"register ->"</A>
+                    {move || i18n.t("login.no_account")}
+                    <A href="/auth/register" attr:class="text-[var(--fg-primary)] underline">{move || i18n.t("login.register_link")}</A>
                 </p>
             </div>
         </div>

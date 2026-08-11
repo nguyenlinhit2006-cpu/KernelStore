@@ -12,6 +12,7 @@ use crate::api::{
 use crate::auth::AuthContext;
 use crate::components::input::TermInput;
 use crate::components::loading::Loading;
+use crate::i18n::use_i18n;
 
 async fn load_shop(token: String) -> Result<Option<ShopInfo>, String> {
     get_my_shop(&token).await.map_err(|e| e.to_string())
@@ -49,6 +50,7 @@ fn flatten_categories(nodes: &[CategoryNode], depth: usize, out: &mut Vec<(Strin
 #[component]
 pub fn SellerPage() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
 
     let shop = RwSignal::new(None::<ShopInfo>);
     let loading = RwSignal::new(true);
@@ -89,11 +91,11 @@ pub fn SellerPage() -> impl IntoView {
     view! {
         <div class="max-w-4xl mx-auto p-6">
             <p class="term-muted text-sm mb-1">"$ kernelstore --seller"</p>
-            <h1 class="text-lg font-bold mb-4">"> seller dashboard"</h1>
+            <h1 class="text-lg font-bold mb-4">{move || i18n.t("seller.title")}</h1>
 
             {move || {
                 if loading.get() {
-                    view! { <p><Loading text="loading shop"/></p> }.into_any()
+                    view! { <p><Loading text=i18n.t("seller.loading_shop")/></p> }.into_any()
                 } else if !error.get().is_empty() {
                     view! { <p class="term-error">"[ERROR] " {error.get()}</p> }.into_any()
                 } else if shop.get().is_none() {
@@ -115,18 +117,19 @@ pub fn SellerPage() -> impl IntoView {
 
 #[component]
 fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
+    let i18n = use_i18n();
     let approved = shop.status == "Approved";
     let items = vec!["dashboard", "sales", "products", "categories", "settings"];
 
     view! {
         <aside class="term-box p-3 w-full sm:w-44 shrink-0">
-            <p class="term-muted text-xs mb-2">"~ menu"</p>
+            <p class="term-muted text-xs mb-2">{move || i18n.t("seller.menu")}</p>
             <nav class="flex flex-row sm:flex-col gap-1">
                 {items.into_iter().map(|label| {
                     let label = label.to_string();
                     let label_active = label.clone();
-                    let label_active_cls = label.clone();
                     let label_active_txt = label.clone();
+                    let label_key = format!("seller.m.{label}");
                     let label_click = label.clone();
                     let enabled = (label != "products" && label != "sales" && label != "categories") || approved;
                     view! {
@@ -137,12 +140,8 @@ fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
                             on:click=move |_| if enabled { section.set(label_click.clone()) }
                         >
                             {move || {
-                                let cur = section.get();
-                                if cur == label_active_txt {
-                                    format!("> {label_active_cls}")
-                                } else {
-                                    format!("  {label_active_cls}")
-                                }
+                                let prefix = if section.get() == label_active_txt { "> " } else { "  " };
+                                format!("{prefix}{}", i18n.t(&label_key))
                             }}
                         </button>
                     }
@@ -154,6 +153,7 @@ fn SellerSidebar(shop: ShopInfo, section: RwSignal<String>) -> impl IntoView {
 
 #[component]
 fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: RwSignal<String>, flash: RwSignal<String>) -> impl IntoView {
+    let i18n = use_i18n();
     Effect::new(move |_| {
         let _ = section.get();
         flash.set(String::new());
@@ -175,7 +175,7 @@ fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: R
                     } else {
                         view! {
                             <div class="term-box p-5">
-                                <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa thể quản lý sản phẩm."</p>
+                                <p class="term-warn text-sm">{i18n.t("seller.not_approved_products")}</p>
                             </div>
                         }.into_any()
                     }
@@ -186,7 +186,7 @@ fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: R
                     } else {
                         view! {
                             <div class="term-box p-5">
-                                <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa có đơn bán."</p>
+                                <p class="term-warn text-sm">{i18n.t("seller.not_approved_sales")}</p>
                             </div>
                         }.into_any()
                     }
@@ -197,7 +197,7 @@ fn SellerContent(shop: RwSignal<Option<ShopInfo>>, auth: AuthContext, section: R
                     } else {
                         view! {
                             <div class="term-box p-5">
-                                <p class="term-warn text-sm">"Shop chưa được duyệt. Chưa thể quản lý danh mục."</p>
+                                <p class="term-warn text-sm">{i18n.t("seller.not_approved_cats")}</p>
                             </div>
                         }.into_any()
                     }
@@ -238,6 +238,7 @@ fn StatCard(label: &'static str, value: String) -> impl IntoView {
 #[component]
 fn RevenueDashboard() -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
 
     let stats = RwSignal::new(None::<SellerDashboard>);
     let loading = RwSignal::new(true);
@@ -262,7 +263,7 @@ fn RevenueDashboard() -> impl IntoView {
 
             {move || {
                 if loading.get() {
-                    return view! { <p><Loading text="loading stats"/></p> }.into_any();
+                    return view! { <p><Loading text=i18n.t("seller.loading_stats")/></p> }.into_any();
                 }
                 let Some(s) = stats.get() else {
                     return view! { <span></span> }.into_any();
@@ -274,7 +275,7 @@ fn RevenueDashboard() -> impl IntoView {
                 view! {
                     // ── revenue headline ─────────────────────────────────
                     <div class="term-box p-4 mb-4">
-                        <p class="term-muted text-xs mb-1"># doanh thu (đơn chưa hủy)</p>
+                        <p class="term-muted text-xs mb-1">{i18n.t("seller.revenue")}</p>
                         <p class="text-2xl font-bold text-[var(--fg-primary)]">
                             {format!("${:.2}", s.total_revenue)}
                         </p>
@@ -282,15 +283,15 @@ fn RevenueDashboard() -> impl IntoView {
 
                     // ── stat cards ───────────────────────────────────────
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                        <StatCard label="orders" value=s.total_orders.to_string()/>
-                        <StatCard label="pending" value=s.pending_orders.to_string()/>
-                        <StatCard label="items sold" value=s.items_sold.to_string()/>
-                        <StatCard label="products" value=format!("{}/{}", s.active_products, s.total_products)/>
+                        <StatCard label=i18n.t("seller.s.orders") value=s.total_orders.to_string()/>
+                        <StatCard label=i18n.t("seller.s.pending") value=s.pending_orders.to_string()/>
+                        <StatCard label=i18n.t("seller.s.items_sold") value=s.items_sold.to_string()/>
+                        <StatCard label=i18n.t("seller.s.products") value=format!("{}/{}", s.active_products, s.total_products)/>
                     </div>
 
                     // ── orders by status ─────────────────────────────────
                     <div class="term-box p-4 mb-4 font-mono text-sm overflow-x-auto">
-                        <p class="term-muted text-xs mb-3"># orders by status</p>
+                        <p class="term-muted text-xs mb-3">{i18n.t("seller.orders_by_status")}</p>
                         {s.orders_by_status.into_iter().map(|o| {
                             let label = format!("{:<10}", o.status);
                             view! {
@@ -305,9 +306,9 @@ fn RevenueDashboard() -> impl IntoView {
 
                     // ── top products ─────────────────────────────────────
                     <div class="term-box p-4 mb-4">
-                        <p class="term-muted text-xs mb-3"># top products (by revenue)</p>
+                        <p class="term-muted text-xs mb-3">{i18n.t("seller.top_products")}</p>
                         {if top.is_empty() {
-                            view! { <p class="term-muted text-sm">"// chưa có đơn hàng nào"</p> }.into_any()
+                            view! { <p class="term-muted text-sm">{i18n.t("seller.no_orders_yet")}</p> }.into_any()
                         } else {
                             view! {
                                 <div class="flex flex-col gap-1">
@@ -353,6 +354,7 @@ fn sales_status_class(status: &str) -> &'static str {
 /// the shared order detail page where the seller can advance the order status.
 #[component]
 fn SalesManager(auth: AuthContext) -> impl IntoView {
+    let i18n = use_i18n();
     let orders = RwSignal::new(Vec::<Order>::new());
     let loading = RwSignal::new(true);
     let error = RwSignal::new(String::new());
@@ -375,13 +377,13 @@ fn SalesManager(auth: AuthContext) -> impl IntoView {
     view! {
         <div class="term-box p-5">
             <div class="flex justify-between items-center mb-3 gap-3 flex-wrap">
-                <h3 class="font-bold text-[var(--fg-primary)]">"> sales"</h3>
+                <h3 class="font-bold text-[var(--fg-primary)]">{move || i18n.t("seller.sales_h")}</h3>
                 <select
                     class="term-input px-3 py-1.5 text-sm"
                     on:change=move |ev| filter.set(event_target_value(&ev))
                 >
                     {SALES_STATUSES.iter().map(|s| {
-                        let label = if s.is_empty() { "all statuses" } else { *s };
+                        let label = if s.is_empty() { i18n.t("seller.all_statuses") } else { *s };
                         view! { <option value=*s>{label}</option> }
                     }).collect_view()}
                 </select>
@@ -393,12 +395,12 @@ fn SalesManager(auth: AuthContext) -> impl IntoView {
 
             {move || {
                 if loading.get() {
-                    return view! { <p><Loading text="loading sales"/></p> }.into_any();
+                    return view! { <p><Loading text=i18n.t("seller.loading_sales")/></p> }.into_any();
                 }
                 let list = orders.get();
                 if list.is_empty() {
                     return view! {
-                        <p class="term-muted text-sm">"// chưa có đơn bán nào"</p>
+                        <p class="term-muted text-sm">{i18n.t("seller.no_sales")}</p>
                     }.into_any();
                 }
                 view! {
@@ -413,6 +415,7 @@ fn SalesManager(auth: AuthContext) -> impl IntoView {
 
 #[component]
 fn SalesRow(order: Order) -> impl IntoView {
+    let i18n = use_i18n();
     let href = format!("/orders/{}", order.id);
     let sclass = sales_status_class(&order.status);
     let date: String = order.created_at.chars().take(10).collect();
@@ -426,7 +429,7 @@ fn SalesRow(order: Order) -> impl IntoView {
                 <span class=format!("text-xs {sclass}")>{order.status}</span>
             </div>
             <div class="flex items-center justify-between gap-3 mt-1 text-xs term-muted">
-                <span>{format!("{} item(s)", order.item_count)}</span>
+                <span>{format!("{} {}", order.item_count, i18n.t("common.items"))}</span>
                 <span class="text-[var(--fg-primary)]">{format!("${:.2}", order.total_amount)}</span>
             </div>
         </a>
@@ -435,6 +438,7 @@ fn SalesRow(order: Order) -> impl IntoView {
 
 #[component]
 fn ShopStatus(shop: ShopInfo) -> impl IntoView {
+    let i18n = use_i18n();
     let status = shop.status.clone();
     let badge = match status.as_str() {
         "Approved" => "term-info",
@@ -455,13 +459,13 @@ fn ShopStatus(shop: ShopInfo) -> impl IntoView {
                 if status == "Pending" {
                     view! {
                         <p class="term-warn text-sm mt-3">
-                            "Đang chờ admin duyệt. Kiểm tra lại sau."
+                            {i18n.t("seller.pending_review")}
                         </p>
                     }.into_any()
                 } else if status == "Rejected" {
                     view! {
                         <p class="term-error text-sm mt-3">
-                            "Shop bị từ chối. Liên hệ admin để biết chi tiết."
+                            {i18n.t("seller.rejected_msg")}
                         </p>
                     }.into_any()
                 } else {
@@ -475,6 +479,7 @@ fn ShopStatus(shop: ShopInfo) -> impl IntoView {
 #[component]
 fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> impl IntoView {
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
     let current = shop.get().unwrap();
     let name = RwSignal::new(current.name.clone());
     let slug = RwSignal::new(current.slug.clone());
@@ -493,7 +498,7 @@ fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> im
         };
 
         if payload.name.trim().is_empty() || payload.slug.trim().is_empty() {
-            error.set("name and slug are required".to_string());
+            error.set(i18n.t("seller.name_slug_required").to_string());
             return;
         }
 
@@ -503,7 +508,7 @@ fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> im
             match update_shop(&token, &payload).await {
                 Ok(updated) => {
                     shop.set(Some(updated));
-                    flash.set("Đã lưu thay đổi.".to_string());
+                    flash.set(i18n.t("seller.saved").to_string());
                 }
                 Err(e) => error.set(e.to_string()),
             }
@@ -513,11 +518,11 @@ fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> im
 
     view! {
         <div class="term-box p-5">
-            <h3 class="font-bold text-[var(--fg-primary)] mb-4">"> shop settings"</h3>
+            <h3 class="font-bold text-[var(--fg-primary)] mb-4">{move || i18n.t("seller.settings_h")}</h3>
 
-            <TermInput id="set-name" label="shop name" value=name/>
-            <TermInput id="set-slug" label="slug" value=slug on_input=Box::new(on_slug)/>
-            <TermInput id="set-desc" label="description" value=description/>
+            <TermInput id="set-name" label=i18n.t("seller.shop_name") value=name/>
+            <TermInput id="set-slug" label=i18n.t("common.slug") value=slug on_input=Box::new(on_slug)/>
+            <TermInput id="set-desc" label=i18n.t("common.description") value=description/>
 
             <p class="term-error text-sm mb-2" class:invisible=move || error.get().is_empty()>
                 "[ERROR] " {move || error.get()}
@@ -529,9 +534,9 @@ fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> im
                 prop:disabled=move || submitting.get()
             >
                 {move || if submitting.get() {
-                    "saving..._".to_string()
+                    i18n.t("seller.submitting").to_string()
                 } else {
-                    "$ save settings".to_string()
+                    i18n.t("seller.save_settings").to_string()
                 }}
             </button>
         </div>
@@ -540,6 +545,7 @@ fn ShopSettings(shop: RwSignal<Option<ShopInfo>>, flash: RwSignal<String>) -> im
 
 #[component]
 fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> impl IntoView {
+    let i18n = use_i18n();
     let name = RwSignal::new(String::new());
     let slug = RwSignal::new(String::new());
     let description = RwSignal::new(String::new());
@@ -567,7 +573,7 @@ fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> 
         };
 
         if payload.name.trim().is_empty() || payload.slug.trim().is_empty() {
-            error.set("name and slug are required".to_string());
+            error.set(i18n.t("seller.name_slug_required").to_string());
             return;
         }
 
@@ -590,14 +596,14 @@ fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> 
     view! {
         <div class="term-box p-5">
             <p class="text-sm mb-4 term-muted">
-                "Bạn chưa có shop. Đăng ký để trở thành seller:"
+                {move || i18n.t("seller.no_shop_hint")}
             </p>
 
-            <TermInput id="shop-name" label="shop name" placeholder="Tech Hub Vietnam" value=name
+            <TermInput id="shop-name" label=i18n.t("seller.shop_name") placeholder="Tech Hub Vietnam" value=name
                 on_input=Box::new(on_name)/>
-            <TermInput id="shop-slug" label="slug" placeholder="tech-hub-vn" value=slug
+            <TermInput id="shop-slug" label=i18n.t("common.slug") placeholder="tech-hub-vn" value=slug
                 on_input=Box::new(on_slug)/>
-            <TermInput id="shop-desc" label="description" placeholder="Gadgets and electronics" value=description/>
+            <TermInput id="shop-desc" label=i18n.t("common.description") placeholder="Gadgets and electronics" value=description/>
 
             <p class="term-error text-sm mb-2" class:invisible=move || error.get().is_empty()>
                 "[ERROR] " {move || error.get()}
@@ -609,9 +615,9 @@ fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> 
                 prop:disabled=move || submitting.get()
             >
                 {move || if submitting.get() {
-                    "submitting..._".to_string()
+                    i18n.t("seller.submitting").to_string()
                 } else {
-                    "$ create shop".to_string()
+                    i18n.t("seller.create_shop").to_string()
                 }}
             </button>
         </div>
@@ -620,6 +626,7 @@ fn CreateShopForm(auth: AuthContext, on_created: RwSignal<Option<ShopInfo>>) -> 
 
 #[component]
 fn ProductManager(auth: AuthContext) -> impl IntoView {
+    let i18n = use_i18n();
     let products = RwSignal::new(Vec::<ProductInfo>::new());
     let loading = RwSignal::new(true);
     let error = RwSignal::new(String::new());
@@ -669,12 +676,12 @@ fn ProductManager(auth: AuthContext) -> impl IntoView {
     view! {
         <div class="term-box p-5">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-bold text-[var(--fg-primary)]">"> products"</h3>
+                <h3 class="font-bold text-[var(--fg-primary)]">{move || i18n.t("seller.products_h")}</h3>
                 <button
                     class="term-btn px-3 py-1 text-xs"
                     on:click=move |_| show_form.set(!show_form.get())
                 >
-                    {move || if show_form.get() { "- cancel" } else { "+ new product" }}
+                    {move || if show_form.get() { i18n.t("seller.cancel_form") } else { i18n.t("seller.new_product") }}
                 </button>
             </div>
 
@@ -692,9 +699,9 @@ fn ProductManager(auth: AuthContext) -> impl IntoView {
 
             {move || {
                 if loading.get() {
-                    view! { <p><Loading text="loading products"/></p> }.into_any()
+                    view! { <p><Loading text=i18n.t("seller.loading_products")/></p> }.into_any()
                 } else if products.get().is_empty() {
-                    view! { <p class="term-muted">"no products yet. use + new product to add one."</p> }.into_any()
+                    view! { <p class="term-muted">{i18n.t("seller.no_products")}</p> }.into_any()
                 } else {
                     let list = products.get();
                     view! {
@@ -717,6 +724,7 @@ fn ProductRow(
     categories: RwSignal<Vec<(String, String)>>,
     refresh: RwSignal<()>,
 ) -> impl IntoView {
+    let i18n = use_i18n();
     let acting = RwSignal::new(false);
     let row_error = RwSignal::new(String::new());
     let editing = RwSignal::new(false);
@@ -739,7 +747,7 @@ fn ProductRow(
     let price_text = format!("{:?}", product.price);
     let sale_text = product.sale_price.map(|v| format!("{:?}", v)).unwrap_or_default();
     let badge = if product.is_active { "term-info" } else { "term-muted" };
-    let active_label = if product.is_active { "active" } else { "hidden" };
+    let active_label = if product.is_active { i18n.t("seller.active") } else { i18n.t("seller.hidden") };
     let category_label = product.category_name.clone().unwrap_or_default();
 
     let product_for_edit = product.clone();
@@ -756,15 +764,15 @@ fn ProductRow(
                     <p class="term-muted text-xs mt-0.5">"slug: " {product.slug.clone()} " | sku: " {product.sku.clone()}</p>
                     <p class="text-xs mt-1">
                         <span class=badge>"[" {active_label} "]"</span>
-                        " " {price_text} " đ | stock: " {product.stock_quantity.to_string()}
+                        " " {price_text} " đ" {i18n.t("seller.stock_label")} {product.stock_quantity.to_string()}
                         {move || {
                             if sale_text.is_empty() {
                                 "".to_string()
                             } else {
-                                format!(" | sale: {sale_text} đ")
+                                format!("{}{sale_text} đ", i18n.t("seller.sale_label"))
                             }
                         }}
-                        {(!category_label.is_empty()).then(|| format!(" | cat: {category_label}"))}
+                        {(!category_label.is_empty()).then(|| format!("{}{category_label}", i18n.t("seller.cat_label")))}
                     </p>
                     <p class="term-error text-xs mt-1" class:invisible=move || row_error.get().is_empty()>
                         {move || row_error.get()}
@@ -775,14 +783,14 @@ fn ProductRow(
                         class="term-btn px-2 py-1 text-xs"
                         on:click=move |_| editing.set(!editing.get())
                     >
-                        {move || if editing.get() { "cancel" } else { "edit" }}
+                        {move || if editing.get() { i18n.t("common.cancel") } else { i18n.t("common.edit") }}
                     </button>
                     <button
                         class="term-btn px-2 py-1 text-xs"
                         on:click=on_delete
                         prop:disabled=move || acting.get()
                     >
-                        "delete"
+                        {move || i18n.t("common.delete")}
                     </button>
                 </div>
             </div>
@@ -812,6 +820,7 @@ fn ProductForm(
     #[prop(optional)] edit: Option<ProductInfo>,
     on_saved: Box<dyn Fn(ProductInfo)>,
 ) -> impl IntoView {
+    let i18n = use_i18n();
     let on_saved: Rc<dyn Fn(ProductInfo)> = Rc::from(on_saved);
     let is_edit = edit.is_some();
     let edit_id = edit.as_ref().map(|p| p.id.clone());
@@ -907,7 +916,7 @@ fn ProductForm(
             .collect();
 
         if name.get().trim().is_empty() || slug.get().trim().is_empty() {
-            error.set("name and slug are required".to_string());
+            error.set(i18n.t("seller.name_slug_required").to_string());
             return;
         }
 
@@ -943,36 +952,36 @@ fn ProductForm(
 
     view! {
         <div class="term-sub p-4 mb-3">
-            <TermInput id="prod-name" label="name" placeholder="Mechanical Keyboard" value=name
+            <TermInput id="prod-name" label=i18n.t("common.name") placeholder="Mechanical Keyboard" value=name
                 on_input=Box::new(on_name)/>
-            <TermInput id="prod-slug" label="slug" placeholder="mechanical-keyboard" value=slug
+            <TermInput id="prod-slug" label=i18n.t("common.slug") placeholder="mechanical-keyboard" value=slug
                 on_input=Box::new(on_slug)/>
-            <TermInput id="prod-desc" label="description" placeholder="Cherry MX brown switches" value=description/>
+            <TermInput id="prod-desc" label=i18n.t("common.description") placeholder="Cherry MX brown switches" value=description/>
             <div class="flex gap-3">
                 <div class="flex-1">
-                    <TermInput id="prod-price" label="price" input_type="number" placeholder="890000" value=price/>
+                    <TermInput id="prod-price" label=i18n.t("seller.f.price") input_type="number" placeholder="890000" value=price/>
                 </div>
                 <div class="flex-1">
-                    <TermInput id="prod-sale" label="sale price" input_type="number" placeholder="(optional)" value=sale/>
+                    <TermInput id="prod-sale" label=i18n.t("seller.f.sale_price") input_type="number" placeholder="(optional)" value=sale/>
                 </div>
             </div>
             <div class="flex gap-3">
                 <div class="flex-1">
-                    <TermInput id="prod-stock" label="stock" input_type="number" placeholder="10" value=stock/>
+                    <TermInput id="prod-stock" label=i18n.t("seller.f.stock") input_type="number" placeholder="10" value=stock/>
                 </div>
                 <div class="flex-1">
-                    <TermInput id="prod-sku" label="sku" placeholder="KB-001" value=sku/>
+                    <TermInput id="prod-sku" label=i18n.t("seller.f.sku") placeholder="KB-001" value=sku/>
                 </div>
             </div>
 
-            <label class="block mb-1 text-xs term-muted">"category"</label>
+            <label class="block mb-1 text-xs term-muted">{move || i18n.t("seller.f.category")}</label>
             <div class="flex items-center gap-2 mb-3">
                 <span class="term-info text-sm shrink-0">">"</span>
                 <select
                     class="term-input w-full px-3 py-2 text-sm"
                     on:change=move |ev| category_id.set(event_target_value(&ev))
                 >
-                    <option value="" selected=move || category_id.get().is_empty()>"(no category)"</option>
+                    <option value="" selected=move || category_id.get().is_empty()>{move || i18n.t("seller.no_category")}</option>
                     {move || {
                         let cur = category_id.get();
                         categories.get().into_iter().map(|(id, label)| {
@@ -983,7 +992,7 @@ fn ProductForm(
                 </select>
             </div>
 
-            <label class="block mb-1 text-xs term-muted">"images — upload from computer (jpg, png, svg)"</label>
+            <label class="block mb-1 text-xs term-muted">{move || i18n.t("seller.images_upload")}</label>
             <div class="flex items-center gap-2 mb-2">
                 <span class="term-info text-sm shrink-0">">"</span>
                 <input
@@ -995,7 +1004,7 @@ fn ProductForm(
                     on:change=on_pick_files
                 />
                 <span class="text-xs term-muted shrink-0" class:invisible=move || !uploading.get()>
-                    "uploading…"
+                    {move || i18n.t("seller.uploading")}
                 </span>
             </div>
 
@@ -1016,7 +1025,7 @@ fn ProductForm(
                 }
             }}
 
-            <label class="block mb-1 text-xs term-muted">"image urls (one per line — auto-filled by upload, editable)"</label>
+            <label class="block mb-1 text-xs term-muted">{move || i18n.t("seller.image_urls")}</label>
             <div class="flex items-start gap-2 mb-3">
                 <span class="term-info text-sm shrink-0">">"</span>
                 <textarea
@@ -1035,7 +1044,7 @@ fn ProductForm(
                         prop:checked=move || is_active.get()
                         on:change=move |ev| is_active.set(event_target_checked(&ev))
                     />
-                    <span class="term-muted">"active (visible in store)"</span>
+                    <span class="term-muted">{i18n.t("seller.active_visible")}</span>
                 </label>
             })}
 
@@ -1048,11 +1057,11 @@ fn ProductForm(
                 prop:disabled=move || submitting.get()
             >
                 {move || if submitting.get() {
-                    "saving..._".to_string()
+                    i18n.t("seller.submitting").to_string()
                 } else if is_edit {
-                    "$ update product".to_string()
+                    i18n.t("seller.update_product").to_string()
                 } else {
-                    "$ save product".to_string()
+                    i18n.t("seller.save_product").to_string()
                 }}
             </button>
         </div>
@@ -1063,6 +1072,7 @@ fn ProductForm(
 /// belong to this seller's own shop (Category.OwnerShopId == shop.Id).
 #[component]
 fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
+    let i18n = use_i18n();
     let cats = RwSignal::new(Vec::<CategoryNode>::new());
     let loading = RwSignal::new(true);
     let error = RwSignal::new(String::new());
@@ -1112,7 +1122,7 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
             return;
         }
         if name.get().trim().is_empty() || slug.get().trim().is_empty() {
-            error.set("name và slug là bắt buộc".to_string());
+            error.set(i18n.t("admin.name_slug_required").to_string());
             return;
         }
         submitting.set(true);
@@ -1132,11 +1142,8 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
             };
             match result {
                 Ok(c) => {
-                    flash.set(format!(
-                        "{} '{}'",
-                        if edit.is_some() { "updated" } else { "created" },
-                        c.name
-                    ));
+                    let key = if edit.is_some() { "admin.updated" } else { "admin.created" };
+                    flash.set(i18n.t(key).replacen("{}", &c.name, 1));
                     reset_form();
                     refresh.set(());
                 }
@@ -1152,7 +1159,7 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
         spawn_local(async move {
             match delete_my_category(&token, &id).await {
                 Ok(_) => {
-                    flash.set(format!("deleted '{cname}'"));
+                    flash.set(i18n.t("admin.deleted").replacen("{}", &cname, 1));
                     refresh.set(());
                 }
                 Err(e) => error.set(e.to_string()),
@@ -1161,9 +1168,9 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
     };
 
     view! {
-        <h2 class="text-base font-bold mb-1">"# danh mục của shop"</h2>
+        <h2 class="text-base font-bold mb-1">{move || i18n.t("seller.shop_cats_h")}</h2>
         <p class="term-muted text-xs mb-3">
-            "Danh mục riêng của shop bạn — dùng để gắn cho sản phẩm (không ảnh hưởng danh mục chung)."
+            {move || i18n.t("seller.shop_cats_hint")}
         </p>
 
         <Show when=move || !flash.get().is_empty()>
@@ -1175,11 +1182,11 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
 
         <div class="term-box p-4 mb-6">
             <p class="term-muted text-xs mb-3">
-                {move || if editing_id.get().is_some() { "# sửa danh mục" } else { "# danh mục mới" }}
+                {move || if editing_id.get().is_some() { i18n.t("seller.edit_cat") } else { i18n.t("seller.new_cat") }}
             </p>
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                    <label class="block mb-1 text-xs term-muted">"name"</label>
+                    <label class="block mb-1 text-xs term-muted">{move || i18n.t("common.name")}</label>
                     <input
                         class="term-input w-full px-3 py-2 text-sm"
                         prop:value=move || name.get()
@@ -1191,7 +1198,7 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
                     />
                 </div>
                 <div>
-                    <label class="block mb-1 text-xs term-muted">"slug"</label>
+                    <label class="block mb-1 text-xs term-muted">{move || i18n.t("common.slug")}</label>
                     <input
                         class="term-input w-full px-3 py-2 text-sm"
                         prop:value=move || slug.get()
@@ -1199,7 +1206,7 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
                     />
                 </div>
                 <div>
-                    <label class="block mb-1 text-xs term-muted">"description"</label>
+                    <label class="block mb-1 text-xs term-muted">{move || i18n.t("common.description")}</label>
                     <input
                         class="term-input w-full px-3 py-2 text-sm"
                         prop:value=move || description.get()
@@ -1210,27 +1217,27 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
             <div class="flex gap-2 mt-3">
                 <button class="term-btn px-4 py-1.5 text-sm" disabled=move || submitting.get() on:click=submit>
                     {move || if submitting.get() {
-                        "saving...".to_string()
+                        i18n.t("common.saving").to_string()
                     } else if editing_id.get().is_some() {
-                        "$ update".to_string()
+                        i18n.t("common.update").to_string()
                     } else {
-                        "$ create".to_string()
+                        i18n.t("common.create").to_string()
                     }}
                 </button>
                 <Show when=move || editing_id.get().is_some()>
-                    <button class="term-btn px-4 py-1.5 text-sm" on:click=move |_| reset_form()>"cancel"</button>
+                    <button class="term-btn px-4 py-1.5 text-sm" on:click=move |_| reset_form()>{move || i18n.t("common.cancel")}</button>
                 </Show>
             </div>
         </div>
 
         {move || {
             if loading.get() {
-                return view! { <Loading text="loading"/> }.into_any();
+                return view! { <Loading text=i18n.t("seller.loading_cats")/> }.into_any();
             }
             let list = cats.get();
             if list.is_empty() {
                 return view! {
-                    <p class="term-muted text-sm">"chưa có danh mục nào. tạo mới ở trên."</p>
+                    <p class="term-muted text-sm">{i18n.t("seller.no_cats")}</p>
                 }.into_any();
             }
             view! {
@@ -1246,14 +1253,14 @@ fn SellerCategoryManager(auth: AuthContext) -> impl IntoView {
                                 <div class="min-w-0">
                                     <p class="text-sm text-[var(--fg-primary)] truncate">{c.name.clone()}</p>
                                     <p class="term-muted text-xs truncate">
-                                        {format!("slug: {} | {} sản phẩm", c.slug, c.product_count)}
+                                        {format!("slug: {} | {}{}", c.slug, c.product_count, i18n.t("seller.cat_products"))}
                                     </p>
                                 </div>
                                 <div class="flex gap-2 shrink-0">
                                     <button class="term-btn px-2 py-1 text-xs"
-                                        on:click=move |_| start_edit(c_edit.clone())>"edit"</button>
+                                        on:click=move |_| start_edit(c_edit.clone())>{i18n.t("common.edit")}</button>
                                     <button class="term-btn px-2 py-1 text-xs term-error"
-                                        on:click=move |_| delete_cat(id.clone(), cname.clone())>"delete"</button>
+                                        on:click=move |_| delete_cat(id.clone(), cname.clone())>{i18n.t("common.delete")}</button>
                                 </div>
                             </div>
                         }

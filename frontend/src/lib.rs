@@ -18,17 +18,38 @@ use crate::pages::seller::SellerPage;
 pub mod api;
 pub mod auth;
 pub mod components;
+pub mod i18n;
 pub mod pages;
+
+use crate::i18n::{provide_i18n, use_i18n};
+
+/// Compact EN/VI toggle shown in the header. Clicking flips the active language
+/// for the whole app; the choice is persisted to localStorage.
+#[component]
+fn LangSwitcher() -> impl IntoView {
+    let i18n = use_i18n();
+    view! {
+        <button
+            class="term-btn px-2 py-0.5 text-xs"
+            title="switch language / đổi ngôn ngữ"
+            on:click=move |_| i18n.toggle()
+        >
+            {move || i18n.lang.get().label()}
+        </button>
+    }
+}
 
 #[component]
 fn Header() -> impl IntoView {
     let auth = use_context::<crate::auth::AuthContext>().expect("AuthContext must be provided");
+    let i18n = use_i18n();
     let navigate = leptos_router::hooks::use_navigate();
 
     view! {
         <header class="border-b px-4 py-2 flex flex-wrap justify-between items-center gap-2 text-sm">
             <a href="/" class="text-[var(--fg-primary)] font-bold">"KernelStore v0.1.0"</a>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                <LangSwitcher/>
                 {move || match auth.user.get() {
                     Some(u) => {
                         let nav = navigate.clone();
@@ -40,15 +61,15 @@ fn Header() -> impl IntoView {
                                     auth.logout();
                                     nav("/", Default::default());
                                 }
-                            >"logout"</button>
+                            >{move || i18n.t("header.logout")}</button>
                         }.into_any()
                     }
                     None => view! {
                         <div class="flex items-center gap-2 sm:gap-3">
-                            <span class="hidden sm:inline text-[var(--fg-muted)]">"guest@kernelstore"</span>
-                            <a href="/products" class="term-btn px-2 py-0.5 text-xs">"browse"</a>
-                            <a href="/auth/login" class="term-btn px-2 py-0.5 text-xs">"login"</a>
-                            <a href="/auth/register" class="term-btn px-2 py-0.5 text-xs">"register"</a>
+                            <span class="hidden sm:inline text-[var(--fg-muted)]">{move || i18n.t("header.guest")}</span>
+                            <a href="/products" class="term-btn px-2 py-0.5 text-xs">{move || i18n.t("header.browse")}</a>
+                            <a href="/auth/login" class="term-btn px-2 py-0.5 text-xs">{move || i18n.t("header.login")}</a>
+                            <a href="/auth/register" class="term-btn px-2 py-0.5 text-xs">{move || i18n.t("header.register")}</a>
                         </div>
                     }.into_any(),
                 }}
@@ -60,6 +81,7 @@ fn Header() -> impl IntoView {
 #[component]
 pub fn App() -> impl IntoView {
     let auth = provide_auth();
+    provide_i18n();
     crate::components::toast::provide_toasts();
 
     view! {
@@ -69,19 +91,19 @@ pub fn App() -> impl IntoView {
                 <crate::components::nav::NavMenu/>
                 <crate::components::toast::ToastHost/>
                 <main class="flex-1">
-                    <Routes fallback=|| view! {
+                    <Routes fallback=|| { let i18n = use_i18n(); view! {
                         <crate::components::error::KernelPanic
                             code="404"
-                            title="route not found"
-                            detail="no such path in the routing table — check the URL or head home"
+                            title=i18n.t("panic.route_not_found")
+                            detail=i18n.t("panic.route_detail")
                         />
-                    }>
+                    }}>
                         <ProtectedRoute
                             path=path!("/")
                             view=HomePage
                             condition=move || Some(auth.token.get().is_some_and(|t| !t.is_empty()))
                             redirect_path=|| "/auth/login"
-                            fallback=|| view! { <p class="p-6"><crate::components::loading::Loading text="checking session"/></p> }
+                            fallback=|| { let i18n = use_i18n(); view! { <p class="p-6"><crate::components::loading::Loading text=i18n.t("panic.checking_session")/></p> } }
                         />
                         <Route path=path!("/products") view=ProductsPage/>
                         <Route path=path!("/products/:slug") view=ProductDetailPage/>

@@ -10,6 +10,7 @@ use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
 use crate::components::loading::Loading;
 use crate::components::toast::ToastContext;
+use crate::i18n::use_i18n;
 
 /// Renders `count` filled stars out of 5.
 fn stars(count: i32) -> String {
@@ -20,6 +21,7 @@ fn stars(count: i32) -> String {
 #[component]
 pub fn ProductDetailPage() -> impl IntoView {
     let params = use_params_map();
+    let i18n = use_i18n();
     let slug = move || params.get().get("slug").unwrap_or_default();
 
     let product = LocalResource::new(move || {
@@ -30,26 +32,26 @@ pub fn ProductDetailPage() -> impl IntoView {
     view! {
         <div class="p-6 max-w-6xl mx-auto">
             <Transition fallback=move || view! {
-                <p class="py-16 text-center"><Loading text="loading product"/></p>
+                <p class="py-16 text-center"><Loading text=i18n.t("pd.loading")/></p>
             }>
                 {move || match product.get().map(|p| p.take()) {
-                    None => view! { <p class="py-16 text-center"><Loading text="loading product"/></p> }.into_any(),
+                    None => view! { <p class="py-16 text-center"><Loading text=i18n.t("pd.loading")/></p> }.into_any(),
                     Some(Err(ApiError::NotFound)) => view! {
                         <KernelPanic
                             code="404"
-                            title="product not found"
-                            detail="the product may have been removed or set inactive"
+                            title=i18n.t("pd.not_found")
+                            detail=i18n.t("pd.not_found_detail")
                             back_href="/products"
-                            back_label="< back to /products"
+                            back_label=i18n.t("pd.back_products")
                         />
                     }.into_any(),
                     Some(Err(err)) => view! {
                         <KernelPanic
                             code="500"
-                            title="failed to load product"
+                            title=i18n.t("pd.load_failed")
                             detail=err.to_string()
                             back_href="/products"
-                            back_label="< back to /products"
+                            back_label=i18n.t("pd.back_products")
                         />
                     }.into_any(),
                     Some(Ok(p)) => view! { <ProductView product=p/> }.into_any(),
@@ -61,10 +63,11 @@ pub fn ProductDetailPage() -> impl IntoView {
 
 #[component]
 fn ProductView(product: ProductDetail) -> impl IntoView {
+    let i18n = use_i18n();
     let price = product.sale_price.unwrap_or(product.price);
     let has_sale = product.sale_price.is_some();
     let in_stock = product.stock_quantity > 0;
-    let category = product.category_name.clone().unwrap_or_else(|| "uncategorized".to_string());
+    let category = product.category_name.clone().unwrap_or_else(|| i18n.t("products.uncategorized").to_string());
 
     let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
     let navigate = leptos_router::hooks::use_navigate();
@@ -96,11 +99,11 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
         spawn_local(async move {
             match add_to_cart(&token, &pid, 1).await {
                 Ok(cart) => {
-                    flash.set(format!("added to cart ({} items)", cart.total_items));
-                    toasts.success(format!("added to cart — {} item(s)", cart.total_items));
+                    flash.set(format!("{} ({} {})", i18n.t("pd.added_flash"), cart.total_items, i18n.t("common.items")));
+                    toasts.success(format!("{} — {} {}", i18n.t("pd.added_flash"), cart.total_items, i18n.t("common.items")));
                 }
                 Err(e) => {
-                    flash.set(format!("error: {e}"));
+                    flash.set(format!("{}{e}", i18n.t("products.error")));
                     toasts.error(e.to_string());
                 }
             }
@@ -123,7 +126,7 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                     navigate(&format!("/chat?c={}", convo.id), Default::default());
                 }
                 Err(e) => {
-                    toasts.error(format!("Không thể chat với shop này: {e}"));
+                    toasts.error(format!("{}{e}", i18n.t("pd.chat_failed")));
                 }
             }
         });
@@ -181,8 +184,8 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                 <div class="flex items-center gap-2 text-sm">
                     <span class="term-warn">{stars(product.average_rating.round() as i32)}</span>
                     <span class="term-muted">
-                        {format!("{:.1} ({} review{})", product.average_rating, product.review_count,
-                            if product.review_count == 1 { "" } else { "s" })}
+                        {format!("{:.1} ({} {})", product.average_rating, product.review_count,
+                            if product.review_count == 1 { i18n.t("pd.reviews_word") } else { i18n.t("pd.reviews_word_plural") })}
                     </span>
                 </div>
 
@@ -198,16 +201,16 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
 
                 <div class="text-sm space-y-1">
                     <p>
-                        <span class="term-muted">"stock: "</span>
+                        <span class="term-muted">{i18n.t("pd.stock")}</span>
                         {if in_stock {
-                            view! { <span class="text-[var(--fg-primary)]">{format!("{} available", product.stock_quantity)}</span> }.into_any()
+                            view! { <span class="text-[var(--fg-primary)]">{format!("{} {}", product.stock_quantity, i18n.t("pd.available"))}</span> }.into_any()
                         } else {
-                            view! { <span class="term-error">"out of stock"</span> }.into_any()
+                            view! { <span class="term-error">{i18n.t("pd.out_of_stock")}</span> }.into_any()
                         }}
                     </p>
-                    <p><span class="term-muted">"sku: "</span><span>{product.sku.clone()}</span></p>
+                    <p><span class="term-muted">{i18n.t("pd.sku")}</span><span>{product.sku.clone()}</span></p>
                     <p>
-                        <span class="term-muted">"sold by: "</span>
+                        <span class="term-muted">{i18n.t("pd.sold_by")}</span>
                         <a href=shop_href.clone() class="term-info hover:underline">{product.shop.name.clone()}</a>
                     </p>
                 </div>
@@ -219,11 +222,11 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                         on:click=on_add
                     >
                         {move || if !in_stock {
-                            "unavailable".to_string()
+                            i18n.t("pd.unavailable").to_string()
                         } else if adding.get() {
-                            "adding...".to_string()
+                            i18n.t("pd.adding").to_string()
                         } else {
-                            "$ add-to-cart".to_string()
+                            i18n.t("pd.add_to_cart").to_string()
                         }}
                     </button>
                     <Show when=move || !flash.get().is_empty()>
@@ -232,7 +235,7 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                 </div>
 
                 <div class="term-sub p-3 mt-4">
-                    <p class="term-muted text-xs mb-1"># description</p>
+                    <p class="term-muted text-xs mb-1">{i18n.t("pd.description")}</p>
                     <p class="text-sm whitespace-pre-wrap">{product.description.clone()}</p>
                 </div>
             </div>
@@ -241,19 +244,19 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
         // ── Shop summary ────────────────────────────────────────────────
         <div class="term-box p-4 mt-8 flex items-center justify-between gap-4">
             <div>
-                <p class="text-xs term-muted mb-1"># shop</p>
+                <p class="text-xs term-muted mb-1">{i18n.t("pd.shop")}</p>
                 <p class="text-[var(--fg-primary)] font-bold">{product.shop.name.clone()}</p>
                 <p class="term-muted text-xs mt-1">
-                    {format!("{} product(s)", product.shop.product_count)}
+                    {format!("{} {}", product.shop.product_count, i18n.t("common.products"))}
                     {(!product.shop.description.is_empty()).then(|| format!(" · {}", product.shop.description))}
                 </p>
             </div>
             <div class="flex gap-2">
                 <button class="term-btn px-4 py-2 text-sm shrink-0" on:click=on_chat>
-                    "chat with seller"
+                    {i18n.t("pd.chat_seller")}
                 </button>
                 <a href=format!("/products?shop={}", product.shop.slug) class="term-btn px-4 py-2 text-sm shrink-0">
-                    "view shop →"
+                    {i18n.t("pd.view_shop")}
                 </a>
             </div>
         </div>
@@ -271,6 +274,7 @@ fn bar(ratio: f64) -> String {
 
 #[component]
 fn Reviews(product_id: String) -> impl IntoView {
+    let i18n = use_i18n();
     let data = LocalResource::new({
         let pid = product_id.clone();
         move || {
@@ -282,7 +286,7 @@ fn Reviews(product_id: String) -> impl IntoView {
     view! {
         <div class="mt-8">
             <Transition fallback=move || view! {
-                <p class="text-sm py-4"><Loading text="loading reviews"/></p>
+                <p class="text-sm py-4"><Loading text=i18n.t("pd.loading_reviews")/></p>
             }>
                 {move || match data.get().map(|d| d.take()) {
                     Some(Ok(r)) => {
@@ -297,7 +301,7 @@ fn Reviews(product_id: String) -> impl IntoView {
 
                         view! {
                             <h2 class="text-lg font-bold mb-4">
-                                "# reviews "
+                                {i18n.t("pd.reviews")}
                                 <span class="term-muted text-sm">{format!("({count})")}</span>
                             </h2>
 
@@ -308,7 +312,7 @@ fn Reviews(product_id: String) -> impl IntoView {
                                         <div class="text-center shrink-0">
                                             <p class="text-3xl font-bold text-[var(--fg-primary)]">{format!("{avg:.1}")}</p>
                                             <p class="term-warn text-sm">{stars(avg.round() as i32)}</p>
-                                            <p class="term-muted text-xs mt-1">{format!("{count} rating(s)")}</p>
+                                            <p class="term-muted text-xs mt-1">{format!("{count} {}", i18n.t("pd.ratings"))}</p>
                                         </div>
                                         <div class="flex-1 space-y-1">
                                             {(1..=5).rev().map(|star| {
@@ -328,7 +332,7 @@ fn Reviews(product_id: String) -> impl IntoView {
                             })}
 
                             {if r.reviews.is_empty() {
-                                view! { <p class="term-muted text-sm">"no reviews yet — be the first after you buy."</p> }.into_any()
+                                view! { <p class="term-muted text-sm">{i18n.t("pd.no_reviews")}</p> }.into_any()
                             } else {
                                 view! {
                                     <div class="space-y-3">
@@ -339,9 +343,9 @@ fn Reviews(product_id: String) -> impl IntoView {
                         }.into_any()
                     }
                     Some(Err(e)) => view! {
-                        <p class="term-error text-sm">"failed to load reviews: " {e.to_string()}</p>
+                        <p class="term-error text-sm">{i18n.t("pd.reviews_failed")} {e.to_string()}</p>
                     }.into_any(),
-                    None => view! { <p class="term-muted text-sm py-4">"loading..."</p> }.into_any(),
+                    None => view! { <p class="term-muted text-sm py-4">{i18n.t("products.loading_dots")}</p> }.into_any(),
                 }}
             </Transition>
         </div>
