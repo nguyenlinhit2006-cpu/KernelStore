@@ -312,7 +312,7 @@ public static class DatabaseSeeder
     private static async Task EnsureProductAsync(
         ApplicationDbContext db, Guid shopId, Guid categoryId, string name, string slug,
         string description, decimal price, decimal? salePrice, int stock, string sku,
-        string imageExt = "jpg")
+        string imageExt = "jpg", int warrantyMonths = 12)
     {
         if (await db.Products.AnyAsync(p => p.Slug == slug))
             return;
@@ -327,6 +327,7 @@ public static class DatabaseSeeder
             SalePrice = salePrice,
             StockQuantity = stock,
             Sku = sku,
+            WarrantyMonths = warrantyMonths,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
             ShopId = shopId,

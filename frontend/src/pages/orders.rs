@@ -3,8 +3,8 @@ use leptos::task::spawn_local;
 use leptos_router::hooks::use_params_map;
 
 use crate::api::{
-    cancel_order, confirm_received, create_review, get_order, list_orders, request_return,
-    resolve_return, update_order_status, ApiError, Order,
+    cancel_order, confirm_received, create_review, create_warranty_claim, get_order, list_orders,
+    request_return, resolve_return, update_order_status, ApiError, CreateWarrantyPayload, Order,
 };
 use crate::auth::AuthContext;
 use crate::components::error::KernelPanic;
@@ -192,11 +192,13 @@ pub fn OrderDetailPage() -> impl IntoView {
                     && matches!(o.status.as_str(), "Pending" | "Confirmed" | "Processing");
                 // Buyer can request a return after receiving.
                 let can_return = is_customer && o.status == "Delivered";
+                // Buyer can request warranty on delivered items (backend enforces coverage).
+                let can_warranty = is_customer && o.status == "Delivered";
                 // Seller/admin resolves a pending return request.
                 let can_resolve_return = can_manage && o.status == "ReturnRequested";
 
                 view! {
-                    <OrderDetailView order=o can_review=can_review/>
+                    <OrderDetailView order=o can_review=can_review can_warranty=can_warranty/>
                     <Show when=move || can_confirm>
                         <ConfirmReceipt order_signal=order/>
                     </Show>
@@ -489,7 +491,11 @@ fn StatusManager(order_signal: RwSignal<Option<Order>>) -> impl IntoView {
 }
 
 #[component]
-fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> impl IntoView {
+fn OrderDetailView(
+    order: Order,
+    #[prop(default = false)] can_review: bool,
+    #[prop(default = false)] can_warranty: bool,
+) -> impl IntoView {
     let i18n = use_i18n();
     let sclass = status_class(&order.status);
     let a = order.address.clone();
@@ -520,6 +526,8 @@ fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> i
                     let img = item.image_url.clone().unwrap_or_default();
                     let pid = item.product_id.clone();
                     let pname = item.product_name.clone();
+                    let detail_id = item.id.clone();
+                    let wname = item.product_name.clone();
                     view! {
                         <div class="border-b border-[var(--border)] last:border-0">
                             <div class="grid grid-cols-[1fr_auto_auto] gap-3 px-4 py-3 items-center">
@@ -546,6 +554,9 @@ fn OrderDetailView(order: Order, #[prop(default = false)] can_review: bool) -> i
                             </div>
                             {can_review.then(|| view! {
                                 <ReviewForm product_id=pid product_name=pname/>
+                            })}
+                            {can_warranty.then(|| view! {
+                                <WarrantyForm order_detail_id=detail_id product_name=wname/>
                             })}
                         </div>
                     }
@@ -669,6 +680,117 @@ fn ReviewForm(product_id: String, product_name: String) -> impl IntoView {
                         </Show>
                     </div>
                 </div>
+            </Show>
+        </div>
+    }
+}
+
+/// Inline warranty request form shown per product on a delivered order.
+/// The backend rejects the claim if the product has no warranty or it has expired.
+#[component]
+fn WarrantyForm(order_detail_id: String, product_name: String) -> impl IntoView {
+    let auth = use_context::<AuthContext>().expect("AuthContext must be provided");
+    let toasts = use_context::<ToastContext>().expect("ToastContext must be provided");
+    let i18n = use_i18n();
+
+    let detail_id = StoredValue::new(order_detail_id);
+    let product_name = StoredValue::new(product_name);
+    let open = RwSignal::new(false);
+    let description = RwSignal::new(String::new());
+    let image_url = RwSignal::new(String::new());
+    let busy = RwSignal::new(false);
+    let done = RwSignal::new(false);
+    let msg = RwSignal::new(String::new());
+
+    let submit = move |_| {
+        if busy.get() {
+            return;
+        }
+        let desc = description.get().trim().to_string();
+        if desc.len() < 10 {
+            msg.set(i18n.t("warranty.desc_too_short").to_string());
+            return;
+        }
+        busy.set(true);
+        msg.set(String::new());
+        let token = auth.token.get().unwrap_or_default();
+        let payload = CreateWarrantyPayload {
+            order_detail_id: detail_id.get_value(),
+            description: desc,
+            image_url: image_url.get().trim().to_string(),
+        };
+        spawn_local(async move {
+            match create_warranty_claim(&token, &payload).await {
+                Ok(c) => {
+                    done.set(true);
+                    msg.set(format!("{}{}", i18n.t("warranty.submitted_code"), c.claim_code));
+                    toasts.success(i18n.t("warranty.submitted"));
+                }
+                Err(e) => {
+                    msg.set(format!("{}{e}", i18n.t("products.error")));
+                    toasts.error(e.to_string());
+                }
+            }
+            busy.set(false);
+        });
+    };
+
+    view! {
+        <div class="px-4 pb-3">
+            <Show
+                when=move || !done.get()
+                fallback=move || view! {
+                    <p class="term-info text-xs">{move || msg.get()}</p>
+                }
+            >
+                <Show
+                    when=move || open.get()
+                    fallback=move || view! {
+                        <button
+                            type="button"
+                            class="term-btn px-3 py-1 text-xs"
+                            on:click=move |_| open.set(true)
+                        >
+                            {i18n.t("warranty.request_btn")}
+                        </button>
+                    }
+                >
+                    <div class="term-sub p-3">
+                        <p class="term-muted text-xs mb-2">{format!("{}{}", i18n.t("warranty.request_prefix"), product_name.get_value())}</p>
+                        <textarea
+                            class="term-input w-full px-3 py-2 text-sm mb-2"
+                            rows="2"
+                            placeholder=i18n.t("warranty.desc_ph")
+                            prop:value=move || description.get()
+                            on:input=move |ev| description.set(event_target_value(&ev))
+                        ></textarea>
+                        <input
+                            class="term-input w-full px-3 py-2 text-sm mb-2"
+                            placeholder=i18n.t("warranty.image_ph")
+                            prop:value=move || image_url.get()
+                            on:input=move |ev| image_url.set(event_target_value(&ev))
+                        />
+                        <div class="flex items-center gap-3">
+                            <button
+                                class="term-btn px-4 py-1.5 text-sm"
+                                disabled=move || busy.get()
+                                on:click=submit
+                            >
+                                {move || if busy.get() { i18n.t("orders.submitting") } else { i18n.t("warranty.send") }}
+                            </button>
+                            <button
+                                type="button"
+                                class="term-btn px-3 py-1.5 text-sm"
+                                on:click=move |_| open.set(false)
+                            >
+                                {i18n.t("common.cancel")}
+                            </button>
+                            <Show when=move || !msg.get().is_empty()>
+                                <span class="term-warn text-xs">{move || msg.get()}</span>
+                            </Show>
+                        </div>
+                    </div>
+                </Show>
             </Show>
         </div>
     }

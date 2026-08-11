@@ -18,6 +18,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<WarrantyClaim> WarrantyClaims => Set<WarrantyClaim>();
     public DbSet<CartItem> CartItems => Set<CartItem>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Conversation> Conversations => Set<Conversation>();
@@ -129,6 +130,31 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, IdentityR
             e.HasOne(r => r.User)
                 .WithMany(u => u.Reviews)
                 .HasForeignKey(r => r.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<WarrantyClaim>(e =>
+        {
+            e.Property(w => w.ClaimCode).IsRequired().HasMaxLength(50);
+            e.Property(w => w.Description).HasMaxLength(2000);
+            e.Property(w => w.ImageUrl).HasMaxLength(500);
+            e.Property(w => w.ResolutionNote).HasMaxLength(1000);
+            e.HasIndex(w => w.ClaimCode).IsUnique();
+            e.HasOne(w => w.OrderDetail)
+                .WithMany()
+                .HasForeignKey(w => w.OrderDetailId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(w => w.Product)
+                .WithMany()
+                .HasForeignKey(w => w.ProductId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(w => w.Shop)
+                .WithMany()
+                .HasForeignKey(w => w.ShopId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
 

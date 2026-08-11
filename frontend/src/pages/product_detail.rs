@@ -210,6 +210,14 @@ fn ProductView(product: ProductDetail) -> impl IntoView {
                     </p>
                     <p><span class="term-muted">{i18n.t("pd.sku")}</span><span>{product.sku.clone()}</span></p>
                     <p>
+                        <span class="term-muted">{i18n.t("pd.warranty")}</span>
+                        {if product.warranty_months > 0 {
+                            view! { <span class="text-[var(--fg-primary)]">{format!("{} {}", product.warranty_months, i18n.t("pd.warranty_months"))}</span> }.into_any()
+                        } else {
+                            view! { <span class="term-muted">{i18n.t("pd.no_warranty")}</span> }.into_any()
+                        }}
+                    </p>
+                    <p>
                         <span class="term-muted">{i18n.t("pd.sold_by")}</span>
                         <a href=shop_href.clone() class="term-info hover:underline">{product.shop.name.clone()}</a>
                     </p>

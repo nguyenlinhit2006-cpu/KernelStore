@@ -157,7 +157,7 @@ public class ProductsController : ControllerBase
         var dto = new ProductDetailDto(
             product.Id, product.Name, product.Slug, product.Description,
             product.Price, product.SalePrice, product.StockQuantity,
-            product.Sku, product.CreatedAt, product.ShopId, product.Shop?.Name,
+            product.Sku, product.WarrantyMonths, product.CreatedAt, product.ShopId, product.Shop?.Name,
             product.CategoryId, product.Category?.Name,
             product.Images.OrderBy(i => i.DisplayOrder)
                 .Select(i => new ProductImageDto(
@@ -257,6 +257,7 @@ public class ProductsController : ControllerBase
             SalePrice = request.SalePrice,
             StockQuantity = request.StockQuantity,
             Sku = request.Sku,
+            WarrantyMonths = request.WarrantyMonths,
             CategoryId = request.CategoryId,
             ShopId = shopId,
             IsActive = true,
@@ -312,6 +313,7 @@ public class ProductsController : ControllerBase
         product.SalePrice = request.SalePrice;
         product.StockQuantity = request.StockQuantity;
         product.Sku = request.Sku;
+        product.WarrantyMonths = request.WarrantyMonths;
         product.CategoryId = request.CategoryId;
         product.IsActive = request.IsActive;
 
@@ -405,14 +407,14 @@ public class ProductsController : ControllerBase
 
         return new ProductDto(
             p.Id, p.Name, p.Slug, p.Description, p.Price, p.SalePrice,
-            p.StockQuantity, p.Sku, p.IsActive, p.CreatedAt, p.ShopId, shopName,
+            p.StockQuantity, p.Sku, p.WarrantyMonths, p.IsActive, p.CreatedAt, p.ShopId, shopName,
             p.CategoryId, categoryName, images.Select(i => new ProductImageDto(
                 i.Id, i.Url, i.AltText, i.IsPrimary, i.DisplayOrder)).ToList());
     }
 
     private static ProductDto ToDto(Product p) => new(
         p.Id, p.Name, p.Slug, p.Description, p.Price, p.SalePrice,
-        p.StockQuantity, p.Sku, p.IsActive, p.CreatedAt, p.ShopId, p.Shop?.Name,
+        p.StockQuantity, p.Sku, p.WarrantyMonths, p.IsActive, p.CreatedAt, p.ShopId, p.Shop?.Name,
         p.CategoryId, p.Category?.Name,
         p.Images.OrderBy(i => i.DisplayOrder)
             .Select(i => new ProductImageDto(

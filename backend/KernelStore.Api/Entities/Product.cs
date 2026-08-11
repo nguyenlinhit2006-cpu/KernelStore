@@ -10,6 +10,8 @@ public class Product
     public decimal? SalePrice { get; set; }
     public int StockQuantity { get; set; }
     public string Sku { get; set; } = string.Empty;
+    // Thời hạn bảo hành tính theo tháng (0 = không bảo hành).
+    public int WarrantyMonths { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

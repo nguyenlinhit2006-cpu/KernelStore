@@ -14,6 +14,7 @@ use crate::pages::product_detail::ProductDetailPage;
 use crate::pages::products::ProductsPage;
 use crate::pages::register::RegisterPage;
 use crate::pages::seller::SellerPage;
+use crate::pages::warranty::{WarrantyManagePage, WarrantyPage};
 
 pub mod api;
 pub mod auth;
@@ -137,6 +138,18 @@ pub fn App() -> impl IntoView {
                             path=path!("/checkout")
                             view=CheckoutPage
                             condition=move || Some(auth.token.get().is_some_and(|t| !t.is_empty()))
+                            redirect_path=|| "/auth/login"
+                        />
+                        <ProtectedRoute
+                            path=path!("/warranty")
+                            view=WarrantyPage
+                            condition=move || Some(auth.token.get().is_some_and(|t| !t.is_empty()))
+                            redirect_path=|| "/auth/login"
+                        />
+                        <ProtectedRoute
+                            path=path!("/warranty/manage")
+                            view=WarrantyManagePage
+                            condition=move || Some(auth.user.get().is_some_and(|u| u.role == "Seller" || u.role == "Admin"))
                             redirect_path=|| "/auth/login"
                         />
                         <ProtectedRoute

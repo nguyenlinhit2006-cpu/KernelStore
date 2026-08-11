@@ -24,6 +24,7 @@ fn menu_groups(role: &str) -> Vec<Group> {
             ("nav.browse", "/products"),
             ("nav.cart", "/cart"),
             ("nav.orders", "/orders"),
+            ("nav.warranty", "/warranty"),
             ("nav.chat", "/chat"),
         ],
     };
@@ -38,12 +39,16 @@ fn menu_groups(role: &str) -> Vec<Group> {
                 ("nav.products", "/seller?tab=products"),
                 ("nav.categories", "/seller?tab=categories"),
                 ("nav.sales", "/seller?tab=sales"),
+                ("nav.warranty_manage", "/warranty/manage"),
                 ("nav.settings", "/seller?tab=settings"),
             ],
         }),
         "Admin" => groups.push(Group {
             label: "nav.group.admin",
-            items: vec![("nav.panel", "/admin")],
+            items: vec![
+                ("nav.panel", "/admin"),
+                ("nav.warranty_manage", "/warranty/manage"),
+            ],
         }),
         _ => groups.push(Group {
             label: "nav.group.seller",

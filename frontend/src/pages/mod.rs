@@ -9,3 +9,4 @@ pub mod product_detail;
 pub mod products;
 pub mod register;
 pub mod seller;
+pub mod warranty;

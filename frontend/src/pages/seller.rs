@@ -837,6 +837,11 @@ fn ProductForm(
     );
     let stock = RwSignal::new(edit.as_ref().map(|p| p.stock_quantity.to_string()).unwrap_or_default());
     let sku = RwSignal::new(edit.as_ref().map(|p| p.sku.clone()).unwrap_or_default());
+    let warranty = RwSignal::new(
+        edit.as_ref()
+            .map(|p| p.warranty_months.to_string())
+            .unwrap_or_else(|| "12".to_string()),
+    );
     let category_id = RwSignal::new(edit.as_ref().and_then(|p| p.category_id.clone()).unwrap_or_default());
     let images = RwSignal::new(
         edit.as_ref()
@@ -899,6 +904,7 @@ fn ProductForm(
         error.set(String::new());
         let price_val: f64 = price.get().trim().parse().unwrap_or(0.0);
         let stock_val: i32 = stock.get().trim().parse().unwrap_or(0);
+        let warranty_val: i32 = warranty.get().trim().parse().unwrap_or(0);
         let sale_val: Option<f64> = {
             let s = sale.get();
             let s = s.trim();
@@ -928,6 +934,7 @@ fn ProductForm(
             sale_price: sale_val,
             stock_quantity: stock_val,
             sku: sku.get(),
+            warranty_months: warranty_val,
             category_id: cat,
             is_active: is_active.get(),
             images: imgs,
@@ -971,6 +978,9 @@ fn ProductForm(
                 </div>
                 <div class="flex-1">
                     <TermInput id="prod-sku" label=i18n.t("seller.f.sku") placeholder="KB-001" value=sku/>
+                </div>
+                <div class="flex-1">
+                    <TermInput id="prod-warranty" label=i18n.t("seller.f.warranty") input_type="number" placeholder="12" value=warranty/>
                 </div>
             </div>
 

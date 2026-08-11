@@ -488,6 +488,7 @@ pub struct ProductPayload {
     pub sale_price: Option<f64>,
     pub stock_quantity: i32,
     pub sku: String,
+    pub warranty_months: i32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub category_id: Option<String>,
     pub is_active: bool,
@@ -505,6 +506,8 @@ pub struct ProductInfo {
     pub sale_price: Option<f64>,
     pub stock_quantity: i32,
     pub sku: String,
+    #[serde(default)]
+    pub warranty_months: i32,
     pub is_active: bool,
     pub created_at: String,
     pub shop_id: String,
@@ -881,6 +884,8 @@ pub struct ProductDetail {
     pub sale_price: Option<f64>,
     pub stock_quantity: i32,
     pub sku: String,
+    #[serde(default)]
+    pub warranty_months: i32,
     pub created_at: String,
     pub shop_id: String,
     pub shop_name: Option<String>,
@@ -1341,6 +1346,184 @@ pub async fn request_return(token: &str, id: &str) -> Result<Order, ApiError> {
 pub async fn resolve_return(token: &str, id: &str, approve: bool) -> Result<Order, ApiError> {
     let action = if approve { "approve" } else { "reject" };
     order_action(token, format!("/orders/{id}/return/{action}")).await
+}
+
+// ── Warranty (bảo hành) ───────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateWarrantyPayload {
+    pub order_detail_id: String,
+    pub description: String,
+    pub image_url: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WarrantyClaim {
+    pub id: String,
+    pub claim_code: String,
+    pub status: String,
+    pub resolution: String,
+    pub resolution_note: String,
+    pub description: String,
+    pub image_url: Option<String>,
+    pub created_at: String,
+    pub updated_at: Option<String>,
+    pub resolved_at: Option<String>,
+    pub order_detail_id: String,
+    pub order_id: String,
+    pub order_code: String,
+    pub product_id: String,
+    pub product_name: String,
+    pub product_slug: String,
+    pub product_image_url: Option<String>,
+    pub quantity: i32,
+    pub warranty_months: i32,
+    pub warranty_expires_at: Option<String>,
+    pub shop_id: String,
+    pub shop_name: Option<String>,
+    pub user_id: String,
+    pub user_name: String,
+    #[serde(default)]
+    pub can_manage: bool,
+}
+
+fn warranty_envelope(envelope: ApiEnvelope<WarrantyClaim>) -> Result<WarrantyClaim, ApiError> {
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Customer opens a warranty claim for a delivered order line.
+pub async fn create_warranty_claim(
+    token: &str,
+    payload: &CreateWarrantyPayload,
+) -> Result<WarrantyClaim, ApiError> {
+    let resp = Request::post(&format!("{API_BASE}/warranty"))
+        .header("Content-Type", "application/json")
+        .header("Authorization", &format!("Bearer {token}"))
+        .body(serde_json::to_string(payload).unwrap_or_default())
+        .map_err(|e| ApiError::Network(e.to_string()))?
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    warranty_envelope(resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?)
+}
+
+async fn warranty_list(token: &str, url: String) -> Result<Vec<WarrantyClaim>, ApiError> {
+    let resp = Request::get(&url)
+        .header("Authorization", &format!("Bearer {token}"))
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+    let envelope: ApiEnvelope<Vec<WarrantyClaim>> =
+        resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?;
+    if !envelope.success {
+        let msg = envelope.errors.first().cloned().unwrap_or(envelope.message);
+        return Err(ApiError::Server(msg));
+    }
+    envelope.data.ok_or_else(|| ApiError::Server("no data".into()))
+}
+
+/// Customer's own warranty claims.
+pub async fn list_my_warranty(token: &str) -> Result<Vec<WarrantyClaim>, ApiError> {
+    warranty_list(token, format!("{API_BASE}/warranty/mine")).await
+}
+
+/// Warranty claims addressed to the seller's shop (or all, for admin). `status` empty = all.
+pub async fn list_shop_warranty(token: &str, status: &str) -> Result<Vec<WarrantyClaim>, ApiError> {
+    let url = if status.is_empty() {
+        format!("{API_BASE}/warranty/shop")
+    } else {
+        format!("{API_BASE}/warranty/shop?status={status}")
+    };
+    warranty_list(token, url).await
+}
+
+/// Shared helper for the POST /warranty/{id}/{action} endpoints returning a claim.
+async fn warranty_action(
+    token: &str,
+    path: String,
+    body: Option<String>,
+) -> Result<WarrantyClaim, ApiError> {
+    let mut req = Request::post(&format!("{API_BASE}{path}"))
+        .header("Authorization", &format!("Bearer {token}"));
+    let resp = if let Some(json) = body {
+        req = req.header("Content-Type", "application/json");
+        req.body(json)
+            .map_err(|e| ApiError::Network(e.to_string()))?
+            .send()
+            .await
+    } else {
+        req.send().await
+    }
+    .map_err(|e| ApiError::Network(e.to_string()))?;
+    if resp.status() == 401 {
+        return Err(ApiError::Unauthorized);
+    }
+    if resp.status() == 404 {
+        return Err(ApiError::NotFound);
+    }
+    warranty_envelope(resp.json().await.map_err(|e| ApiError::Network(e.to_string()))?)
+}
+
+/// Customer cancels their own pending claim.
+pub async fn cancel_warranty(token: &str, id: &str) -> Result<WarrantyClaim, ApiError> {
+    warranty_action(token, format!("/warranty/{id}/cancel"), None).await
+}
+
+/// Seller/admin approves a claim, choosing a resolution (Repair/Replace/Refund).
+pub async fn approve_warranty(
+    token: &str,
+    id: &str,
+    resolution: &str,
+    note: &str,
+) -> Result<WarrantyClaim, ApiError> {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Body<'a> {
+        resolution: &'a str,
+        note: &'a str,
+    }
+    let json = serde_json::to_string(&Body { resolution, note }).unwrap_or_default();
+    warranty_action(token, format!("/warranty/{id}/approve"), Some(json)).await
+}
+
+/// Seller/admin rejects a claim.
+pub async fn reject_warranty(token: &str, id: &str, note: &str) -> Result<WarrantyClaim, ApiError> {
+    #[derive(Serialize)]
+    struct Body<'a> {
+        note: &'a str,
+    }
+    let json = serde_json::to_string(&Body { note }).unwrap_or_default();
+    warranty_action(token, format!("/warranty/{id}/reject"), Some(json)).await
+}
+
+/// Seller/admin marks an approved claim as being processed.
+pub async fn process_warranty(token: &str, id: &str) -> Result<WarrantyClaim, ApiError> {
+    warranty_action(token, format!("/warranty/{id}/process"), None).await
+}
+
+/// Seller/admin completes a claim.
+pub async fn complete_warranty(token: &str, id: &str, note: &str) -> Result<WarrantyClaim, ApiError> {
+    #[derive(Serialize)]
+    struct Body<'a> {
+        note: &'a str,
+    }
+    let json = serde_json::to_string(&Body { note }).unwrap_or_default();
+    warranty_action(token, format!("/warranty/{id}/complete"), Some(json)).await
 }
 
 pub async fn delete_product(token: &str, id: &str) -> Result<(), ApiError> {

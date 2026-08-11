@@ -31,3 +31,33 @@ public enum OrderStatus
     // Seller/Admin duyệt trả hàng → hoàn kho (ReturnRequested → Returned)
     Returned = 7
 }
+
+// Vòng đời một yêu cầu bảo hành.
+public enum WarrantyStatus
+{
+    // Khách vừa gửi yêu cầu, chờ shop/admin xử lý.
+    Pending = 0,
+    // Shop/Admin chấp nhận bảo hành (kèm hình thức xử lý).
+    Approved = 1,
+    // Shop/Admin từ chối (ngoài điều kiện bảo hành...).
+    Rejected = 2,
+    // Đang tiến hành sửa/đổi/hoàn tiền.
+    Processing = 3,
+    // Đã hoàn tất bảo hành cho khách.
+    Completed = 4,
+    // Khách tự hủy yêu cầu khi còn ở trạng thái Pending.
+    Cancelled = 5
+}
+
+// Hình thức xử lý bảo hành mà shop chọn khi chấp nhận.
+public enum WarrantyResolution
+{
+    // Chưa quyết định (khi còn Pending / bị từ chối).
+    None = 0,
+    // Sửa chữa sản phẩm.
+    Repair = 1,
+    // Đổi sản phẩm mới.
+    Replace = 2,
+    // Hoàn tiền.
+    Refund = 3
+}

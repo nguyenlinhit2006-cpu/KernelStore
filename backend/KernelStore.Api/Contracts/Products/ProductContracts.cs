@@ -28,6 +28,9 @@ public class CreateProductRequest
     [StringLength(100)]
     public string Sku { get; set; } = string.Empty;
 
+    [Range(0, 120, ErrorMessage = "Thời hạn bảo hành từ 0 đến 120 tháng")]
+    public int WarrantyMonths { get; set; }
+
     public Guid? CategoryId { get; set; }
 
     public List<string> Images { get; set; } = new();
@@ -59,6 +62,9 @@ public class UpdateProductRequest
     [StringLength(100)]
     public string Sku { get; set; } = string.Empty;
 
+    [Range(0, 120, ErrorMessage = "Thời hạn bảo hành từ 0 đến 120 tháng")]
+    public int WarrantyMonths { get; set; }
+
     public Guid? CategoryId { get; set; }
 
     public bool IsActive { get; set; } = true;
@@ -82,6 +88,7 @@ public record ProductDto(
     decimal? SalePrice,
     int StockQuantity,
     string Sku,
+    int WarrantyMonths,
     bool IsActive,
     DateTime CreatedAt,
     Guid ShopId,
@@ -117,6 +124,7 @@ public record ProductDetailDto(
     decimal? SalePrice,
     int StockQuantity,
     string Sku,
+    int WarrantyMonths,
     DateTime CreatedAt,
     Guid ShopId,
     string? ShopName,
