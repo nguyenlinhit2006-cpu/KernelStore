@@ -91,7 +91,7 @@ pub fn NavMenu() -> impl IntoView {
             };
 
             view! {
-                <nav class="border-b border-[var(--border)] px-4 py-1.5 flex items-center gap-1.5 text-xs overflow-x-auto whitespace-nowrap">
+                <nav class="glass border-b border-[var(--border)] px-4 py-2 flex items-center gap-1.5 text-xs overflow-x-auto whitespace-nowrap">
                     <a href="/" class=home_cls>{i18n.t("nav.home")}</a>
 
                     {groups.into_iter().enumerate().map(|(gi, g)| {

@@ -47,8 +47,14 @@ fn Header() -> impl IntoView {
     let navigate = leptos_router::hooks::use_navigate();
 
     view! {
-        <header class="border-b px-4 py-2 flex flex-wrap justify-between items-center gap-2 text-sm">
-            <a href="/" class="text-[var(--fg-primary)] font-bold">"KernelStore v0.1.0"</a>
+        <header class="glass sticky top-0 z-40 border-b border-[var(--border)] px-4 py-3 flex flex-wrap justify-between items-center gap-2 text-sm relative">
+            <a href="/" class="font-extrabold text-base tracking-tight flex items-center gap-1.5">
+                <span class="text-[var(--accent)] neon">"\u{276f}"</span>
+                <span class="glow-text">"KernelStore"</span>
+                <span class="text-[var(--fg-muted)] font-medium text-xs">"v0.1.0"</span>
+                <span class="caret text-[var(--accent)] font-normal">"_"</span>
+            </a>
+            <div class="hairline-accent absolute left-0 bottom-0 h-px w-full"></div>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <LangSwitcher/>
                 {move || match auth.user.get() {

@@ -13,9 +13,9 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         <div class="p-6">
-            <section class="relative overflow-hidden bg-gradient-to-b from-[var(--bg)] to-[var(--bg-secondary)] py-16 lg:py-24">
+            <section class="relative overflow-hidden py-16 lg:py-24">
                 <div class="max-w-6xl mx-auto px-4">
-                    <div class="text-center space-y-6">
+                    <div class="text-center space-y-6 fade-up">
                         <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] text-sm font-medium">
                             <span class="relative flex h-2 w-2">
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75"></span>
@@ -23,7 +23,7 @@ pub fn HomePage() -> impl IntoView {
                             </span>
                             {move || i18n.t("home.badge")}
                         </div>
-                        <h1 class="text-4xl lg:text-6xl font-bold tracking-tight bg-gradient-to-r from-[var(--fg-primary)] via-[var(--fg-primary)] to-[var(--accent)] bg-clip-text text-transparent">
+                        <h1 class="text-5xl lg:text-7xl font-extrabold tracking-tight glow-text neon">
                             "KernelStore"
                         </h1>
                         <p class="text-lg lg:text-xl text-[var(--fg-muted)] max-w-2xl mx-auto leading-relaxed">
