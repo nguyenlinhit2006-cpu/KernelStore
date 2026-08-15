@@ -11,5 +11,5 @@ if errorlevel 1 (
 )
 docker compose ps
 echo.
-echo Postgres dang chay tai localhost:5432 (db/user/pass: kernelstore/admin/admin123)
+echo Postgres dang chay tai localhost:5433 (db/user/pass: kernelstore/admin/admin123)
 pause

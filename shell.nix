@@ -14,14 +14,16 @@ pkgs.mkShell {
     dotnet-aspnetcore_10
 
     # Frontend: Rust + Leptos (WASM) build
+    # Lưu ý: KHÔNG dùng rustup (shim cần tải toolchain riêng).
+    # rustc/cargo thẳng từ nixpkgs đã kèm sẵn target wasm32-unknown-unknown.
     trunk
-    rustup
     rustc
     cargo
     tailwindcss
 
     # Tooling
     gcc          # C linker (cc) cho Rust build-scripts / proc-macros
+    lld          # cung cấp wasm-ld/lld cho target wasm32
     pkg-config
     openssl
     docker
@@ -41,11 +43,11 @@ pkgs.mkShell {
     echo "--- rust ---"
     rustc --version
     cargo --version
-    if ! rustup target list --installed 2>/dev/null | grep -q wasm32-unknown-unknown; then
-      rustup default stable 2>/dev/null || true
-      rustup target add wasm32-unknown-unknown || true
+    if rustc --print target-list 2>/dev/null | grep -q wasm32-unknown-unknown; then
+      echo "    wasm32-unknown-unknown target: OK"
+    else
+      echo "    WARNING: target wasm32-unknown-unknown KHONG co san trong rustc cua nixpkgs!"
     fi
-    rustup target list --installed 2>/dev/null | grep wasm32 || true
     echo "--- trunk ---"
     trunk --version
   '';
